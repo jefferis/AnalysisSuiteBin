@@ -246,7 +246,7 @@ sub findRelPathToImgDir {
 
 sub handleFind {
 	# check if file ends in .pic or .pic.gz case insensitive
-	if ($File::Find::name =~ /.*\.pic(\.gz){0,1}$/i){
+	if ($File::Find::name =~ /.*(\.pic(\.gz){0,1}|\.n(rrd|hdr))$/i ){
 		munge($File::Find::name);		
 	}
 }
@@ -683,6 +683,7 @@ Version: $version
 	-s [file|fileStem] Reference brain (average e-2 by default)
 	-b [path] bin directory
 	-d [stem] registration subdirectory (default ./Registration)
+	-e File ending of images (pic, nrrd, nhdr)
 
 	-I inverse consistent warp weight (--ic-weight) default 0, try 1e-5
 	-E [energy] energy of warp transform (default e-1)
@@ -707,7 +708,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h};
 	

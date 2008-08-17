@@ -246,7 +246,7 @@ sub findRelPathToImgDir {
 
 sub handleFind {
 	# check if file ends in .pic or .pic.gz case insensitive
-	if ($File::Find::name =~ /.*(\.pic(\.gz){0,1}|\.n(rrd|hdr))$/i ){
+	if ($File::Find::name =~ /.*\.(pic(\.gz){0,1}|n(rrd|hdr))$/i ){
 		munge($File::Find::name);		
 	}
 }
@@ -257,9 +257,9 @@ sub munge {
 	
 	# get the brain name
 	my $brain=$filename;	
-	$brain=~s/(_raw)?(0\d)?\.pic(\.gz)?//i;	
+	$brain=~s/(_raw)?(0\d)?\.(pic(\.gz){0,1}|n(rrd|hdr))//i;	
 	# the channel of the image
-	my $channel=($filename=~/(0\d)\.pic/i)?$1:"";
+	my $channel=($filename=~/(0\d)\.(pic(\.gz){0,1}|n(rrd|hdr))/i)?$1:"";
 	
 	print  "Found brain name $brain $channel ($filepath)\n" if $opt{v};
 	
@@ -409,7 +409,13 @@ sub runReformat {
 	}
 
 	$outlist=File::Spec->catdir($reformatRoot,&findRelPathToImgDir($inputimgfilepath),$outlist);	
-	my $outfile = File::Spec->catfile($outlist,"image.bin");
+	my $outfile;
+	if($opt{o} eq "nrrd" || $opt{o} eq "nhdr"){
+		$outfile=$outlist.".".$opt{o};
+	} else {
+		$outfile = File::Spec->catfile($outlist,"image.bin");
+	}
+
 	my $testoutfile=$outfile;	
 	
 	print "outlist is: $outlist\n" if $opt{v};
@@ -439,7 +445,8 @@ sub runReformat {
 	
 	# make command 
 	my @args=("-v","--set-null","0");	# makes null pixels black instead of white
-	my @cmd=( $reformatCommand, @args, "-o", "RAW3D:${outfile}", "--study0", $referenceImage, "--study1", $inputimgfilepath, $inlist );
+	# note that if ouput file ending unspecified, Torsten's RAW3D will be used
+	my @cmd=( $reformatCommand, @args, "-o", ($opt{o}?"":"RAW3D:").${outfile}, "--study0", $referenceImage, "--study1", $inputimgfilepath, $inlist );
 	my $cmd_string=join(' ',@cmd);
 
 	if($opt{v}){
@@ -451,8 +458,8 @@ sub runReformat {
 	if(!$opt{t}){
 		print myexec(@cmd);
 		$reformatTotal++;
-		# note -f forces overwrite of existing gz 
-		myexec ( "gzip", "-f", "-9", "${outlist}/image.bin" ) unless $opt{z};
+		# note -f forces overwrite of existing gz
+		myexec ( "gzip", "-f", "-9", "${outlist}/image.bin" ) unless $opt{z} or $opt{o};
 		myexec ( "rm", "${outlist}.lock" );
 		return $outlist;
 	} else {
@@ -522,9 +529,9 @@ sub status {
 	
 	my @paths=keys %found;
 	my @filenames=values %found;
-	my @images=grep /\.pic(\.gz)?$/i, @paths;
-	my @channel1images=grep /01\.pic(\.gz)?/i, @images;
-	my @channel2images=grep /02\.pic(\.gz)?/i, @images;
+	my @images=grep /\.(pic(\.gz){0,1}|n(rrd|hdr))$/i, @paths;
+	my @channel1images=grep /01\.(pic(\.gz){0,1}|n(rrd|hdr))/i, @images;
+	my @channel2images=grep /02\.(pic(\.gz){0,1}|n(rrd|hdr))/i, @images;
   
 	print "Total Images: ".scalar(@images)."\n";	
 	print "Channel 1 images: ".scalar(@channel1images)."\n";	
@@ -683,7 +690,8 @@ Version: $version
 	-s [file|fileStem] Reference brain (average e-2 by default)
 	-b [path] bin directory
 	-d [stem] registration subdirectory (default ./Registration)
-	-e File ending of images (pic, nrrd, nhdr)
+	-e File ending of input images (pic, nrrd, nhdr)
+	-o File ending of output images (bin, nrrd, nhdr) - defaults to torsten raw bin
 
 	-I inverse consistent warp weight (--ic-weight) default 0, try 1e-5
 	-E [energy] energy of warp transform (default e-1)
@@ -708,7 +716,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h};
 	

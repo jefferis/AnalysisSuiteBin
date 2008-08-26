@@ -278,6 +278,7 @@ sub munge {
 	}
 	# run registrations if this file is of the correct channel
 	if($channel=="" || $regChannels=~/$channel/){
+		runInitialAffine( $filepath,$brain,$channel) if $opt{P};		
 		runAffine( $filepath,$brain,$channel) if $opt{a};		
 		# run the warp transformation
 		runWarp($filepath,$brain,$channel) if $opt{w};
@@ -476,12 +477,15 @@ sub runAffine {
 	$args.=" ".$opt{A};	
 	# new version has relative filenames in output dir depending on input hierarchy
 	my $outlist=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_9dof.list");
+	my $inputfile = $filepath;
+	$inputfile = File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),
+		$referenceStem."_".$brain.$channel."_pa.list","registration") if $opt{P};	
 
 	# Continue if an output file doesn't exist or
 	# -s means file exists and has non zero size
 	if( ! -s File::Spec->catfile($outlist,"registration") ){
 		# no output file, so just continue
-	} elsif ( -M "$filepath" > -M File::Spec->catfile($outlist,"registration") ) {
+	} elsif ( -M "$inputfile" > -M File::Spec->catfile($outlist,"registration") ) {
 		# ok age of indir > age of outdir so no need to rerun
 		return 0;		
 	}
@@ -492,7 +496,7 @@ sub runAffine {
 	myexec ( "mkdir", "-p", $outlist ) unless $opt{t};
 	makelock("$outlist/registration.lock");
 
-	my @cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $referenceImage, $filepath );
+	my @cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $referenceImage, $inputfile );
 	my $cmd_string = join( ' ', @cmd );
 	if( $opt{v}){
 		print  "A: Running affine reg with command: $cmd_string\n";
@@ -515,6 +519,55 @@ sub runAffine {
 		return 0;			
 	}
 }
+
+sub runInitialAffine {
+	my ($filepath,$brain,$channel) = @_;	
+	
+	my $args="-v --principal-axes";
+	# add any extra arguments
+
+	# new version has relative filenames in output dir depending on input hierarchy
+	my $outlist=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_pa.list");
+	my $outfile=File::Spec->catfile($outlist,"registration");
+	# Continue if an output file doesn't exist or
+	# -s means file exists and has non zero size
+	if( ! -s $outfile ){
+		# no output file, so just continue
+	} elsif ( -M "$filepath" > -M $outfile ) {
+		# ok age of input image > age of registration file so no need to rerun
+		return 0;		
+	}
+	
+	# bail out if somebody else is working on this
+	return 0 if (-f "$outlist/registration.lock");
+	# now committed, so immediately make output dir and lock it
+	myexec ( "mkdir", "-p", $outlist ) unless $opt{t};
+	makelock("$outlist/registration.lock");
+
+	my @cmd=( $affCommand, split(/\s+/,$args), $referenceImage, $filepath, $outlist );
+	my $cmd_string = join( ' ', @cmd );
+	if( $opt{v}){
+		print  "A: Running make_initial_affine with command: $cmd_string\n";
+	} else {
+		print  "InitialAff:$brain$channel ";
+	}
+	# if not in test mode
+	if(!$opt{t}){
+		# keep a copy of the commandline
+		dumpcommand( "Command was:", join("\0",@cmd), "$outlist/cmd.sh" ) unless $opt{t};
+		# run the command
+		#print "Actually running cmd\n";		
+		#print `$cmd`;	
+		myexec (@cmd);
+		#print "Actually finished cmd\n";		
+		myexec ("rm","$outlist/registration.lock");
+		$affineTotal++;
+		return $outlist;			
+	} else {
+		return 0;			
+	}
+}
+
 	
 sub status {
 	# Displays number of images
@@ -693,6 +746,7 @@ Version: $version
 	-e File ending of input images (pic, nrrd, nhdr)
 	-o File ending of output images (bin, nrrd, nhdr) - defaults to torsten raw bin
 
+	-P find initial affine transform using image principal axes
 	-I inverse consistent warp weight (--ic-weight) default 0, try 1e-5
 	-E [energy] energy of warp transform (default e-1)
 	-X [exploration] (default 16)
@@ -702,6 +756,7 @@ Version: $version
 	-R [refine] (default 3)
 	-J [0 to 1] jacobian-weight volume constraining param (default 0)
 	-T [threads] (default auto or 12 on vesalius)
+	
 	-A [option] additional options for affine transformation
 	-W [option] additional options for warp transformation
   
@@ -716,7 +771,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:P';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h};
 	

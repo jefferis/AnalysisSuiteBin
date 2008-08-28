@@ -46,6 +46,7 @@ my $coarsest=$opt{C}?$opt{C}:"4";
 my $gridspacing=$opt{G}?$opt{G}:"40";
 my $refine=$opt{R}?$opt{R}:"3";
 my $jacobian=$opt{J}?$opt{J}:"0";
+my $outputType=$opt{o}?$opt{o}:"nrrd";
 
 # this will be used to name the warp output files
 my $warpSuffix="warp_m".$metric."g".$gridspacing."c".$coarsest."e".$energyweight."x".$exploration."r".$refine;
@@ -423,8 +424,8 @@ sub runReformat {
 
 	$outlist=File::Spec->catdir($reformatRoot,&findRelPathToImgDir($inputimgfilepath),$outlist);	
 	my ($outfile,$makedir)=('',1); 
-	if($opt{o} eq "nrrd" || $opt{o} eq "nhdr"){
-		$outfile=$outlist.".".$opt{o};
+	if($outputType eq "nrrd" || $outputType eq "nhdr"){
+		$outfile=$outlist.".".$outputType;
 		$makedir=0;
 	} else {
 		$outfile = File::Spec->catfile($outlist,"image.bin");
@@ -460,8 +461,9 @@ sub runReformat {
 	# make command 
 	my @args=("-v","--set-null","0");	# makes null pixels black instead of white
 	# note that if ouput file ending unspecified, Torsten's RAW3D will be used
-	
-	my @cmd=( $reformatCommand, @args, "-o", ($opt{o}?"":"RAW3D:").${outfile}, "--study0", $referenceImage, "--study1", $inputimgfilepath, $inlist );
+	my $outputSpec="RAW3D:";
+	$outputSpec="" if $outputType and ($outputType ne "bin");
+	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile}, "--study0", $referenceImage, "--study1", $inputimgfilepath, $inlist );
 	my $cmd_string=join(' ',@cmd);
 
 	if($opt{v}){
@@ -474,7 +476,8 @@ sub runReformat {
 		print myexec(@cmd);
 		$reformatTotal++;
 		# note -f forces overwrite of existing gz
-		myexec ( "gzip", "-f", "-9", "${outlist}/image.bin" ) unless $opt{z} or $opt{o};
+		myexec ( "gzip", "-f", "-9", "${outlist}/image.bin" ) 
+			unless $opt{z} or ($outputType eq "bin");
 		myexec ( "rm", "${outlist}.lock" );
 		return $outlist;
 	} else {

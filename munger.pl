@@ -111,7 +111,7 @@ my $reformatCommand=File::Spec->catdir($binDir,"reformat");
 
 my $regChannels=$opt{c}?$opt{c}:"01";
 my $reformatChannels=$opt{r}?$opt{r}:"01";
-my $reformatLevels=($opt{l} ne "")?$opt{l}:"5";
+my $reformatLevels=($opt{l} ne "")?$opt{l}:"f";
 my $referenceImageChannel=$opt{f}?$opt{f}:"01";
 
 my $regRoot="Registration";
@@ -389,17 +389,24 @@ sub runReformat {
 	# (not $channel of current image)
 	
 	my ($baseinlist,$inlist);
-	if($level eq "a"){
+	if($level eq "p"){
+		# reformat from principal axis
+		$baseinlist=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($inputimgfilepath),$referenceStem."_".$brain.$referenceImageChannel."_"."pa.list");
+		$inlist=$baseinlist;
+	} elsif($level eq "a"){
 		# reformat from affine
 		$baseinlist=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($inputimgfilepath),$referenceStem."_".$brain.$referenceImageChannel."_"."9dof.list");
 		$inlist=$baseinlist;
-	} else {
+	} elsif ($level=~m/[f0-9]/) {
 		$baseinlist=File::Spec->catdir($regRoot,"warp",&findRelPathToImgDir($inputimgfilepath),$referenceStem."_".$brain.$referenceImageChannel."_".$warpSuffix.".list");
 		$inlist=$baseinlist;
-		if($level>=0 && $level<=4){
+		if($level ne "f"){
 			# registration will be in a subdir in this case
 			$inlist.="/level-0".$level.".list";	
 		}
+	} else {
+			print STDERR "Unrecognised reformat level specifier: $level\n";
+			return 0;
 	}	
 	
 	print "Reformat:inlist would be: $inlist\n" if $opt{v};		
@@ -415,20 +422,24 @@ sub runReformat {
 	# which is what we want here
 		
 	# "a" seems to be trapped by the numeric comparison somehow
-	if($level ne "a" && $level>=0 && $level<=4){
-		# registration will be in a subdir in this case
+	if( $level=~m/[0-9]/ ){
+		# specific warp level ... registration will be in a subdir in this case
 		$outlist=$referenceStem."_".$brain.$channel."_".$outlist."_lev".$level;
-	} else {
-		$outlist=$referenceStem."_".$brain.$channel."_".$outlist;			
+	} elsif ($level eq "f") {
+		# final warp level
+		$outlist=$referenceStem."_".$brain.$channel."_".$outlist;
 	}
 
 	$outlist=File::Spec->catdir($reformatRoot,&findRelPathToImgDir($inputimgfilepath),$outlist);	
-	my ($outfile,$makedir)=('',1); 
+	
+	# Set things up for different image ouput types
+	my ($outfile,$makedir,$outputSpec)=('',1,''); 
 	if($outputType eq "nrrd" || $outputType eq "nhdr"){
 		$outfile=$outlist.".".$outputType;
 		$makedir=0;
 	} else {
 		$outfile = File::Spec->catfile($outlist,"image.bin");
+		$outputSpec="RAW3D:";
 	}
 
 	my $testoutfile=$outfile;	
@@ -460,9 +471,6 @@ sub runReformat {
 	
 	# make command 
 	my @args=("-v","--set-null","0");	# makes null pixels black instead of white
-	# note that if ouput file ending unspecified, Torsten's RAW3D will be used
-	my $outputSpec="RAW3D:";
-	$outputSpec="" if $outputType and ($outputType ne "bin");
 	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile}, "--study0", $referenceImage, "--study1", $inputimgfilepath, $inlist );
 	my $cmd_string=join(' ',@cmd);
 
@@ -750,7 +758,8 @@ Version: $version
 	-w run warp transform
 	-c [01|02|..] channels for registration (default 01 or "")
 	-r [01|02|..] run reformat on these channels
-	-l [a|0|1|2|3|4|5] run reformat on these levels (default 5, a=affine)
+	-l [p|a|0..9|f] run reformat on these levels
+	   (default f=final warp, p=prinicpal axis, a=affine, 0..9=warp intermediates)
 	-f [01|02|..] channel of the images used for registration - default is 01
 
 	[nb use -f to specify the channel of the images that were previously used to

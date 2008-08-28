@@ -113,10 +113,21 @@ my $reformatChannels=$opt{r}?$opt{r}:"01";
 my $reformatLevels=($opt{l} ne "")?$opt{l}:"5";
 my $referenceImageChannel=$opt{f}?$opt{f}:"01";
 
-my $regRoot=$opt{d}?$opt{d}:"Registration";
+my $regRoot="Registration";
 my $imageRoot="images";
 my $reformatRoot="reformatted";
 my $rootDir="";
+if($opt{d}){
+	my $dir=$opt{d};
+	if($dir =~ m/^[.]\w+/){
+		# if the output directory option supplied begins with a .
+		# then append that to BOTH reg and reformat root
+		$regRoot.=$opt{d};
+		$reformatRoot.=$opt{d};
+	} else {
+		$regRoot=$opt{d};
+	}
+}
 
 # Set default lock message
 #my $lockmessage=$opt{k}?$opt{k}:"";
@@ -411,9 +422,10 @@ sub runReformat {
 	}
 
 	$outlist=File::Spec->catdir($reformatRoot,&findRelPathToImgDir($inputimgfilepath),$outlist);	
-	my $outfile;
+	my ($outfile,$makedir)=('',1); 
 	if($opt{o} eq "nrrd" || $opt{o} eq "nhdr"){
 		$outfile=$outlist.".".$opt{o};
+		$makedir=0;
 	} else {
 		$outfile = File::Spec->catfile($outlist,"image.bin");
 	}
@@ -425,11 +437,11 @@ sub runReformat {
 	# nb -M gives time since last modification of file
 	# it's in days but it's a float with lots of digits	
 	# Bail out if we have already reformatted 
-	if ( ! -d $outlist){
+	if ( ! -d $outlist && $makedir){
 		# no output dir, so make one and continue
 		myexec("mkdir -p \"$outlist\"") unless $opt{t};
 	} else {
-		print "outdir exists\n" if $opt{v};
+		print "outdir exists\n" if $opt{v} && $makedir;
 		# there is an output dir ... is there an image file?
 		# check for a zipped one
 		$testoutfile="${outfile}.gz" if(-f "${outfile}.gz");		
@@ -448,6 +460,7 @@ sub runReformat {
 	# make command 
 	my @args=("-v","--set-null","0");	# makes null pixels black instead of white
 	# note that if ouput file ending unspecified, Torsten's RAW3D will be used
+	
 	my @cmd=( $reformatCommand, @args, "-o", ($opt{o}?"":"RAW3D:").${outfile}, "--study0", $referenceImage, "--study1", $inputimgfilepath, $inlist );
 	my $cmd_string=join(' ',@cmd);
 
@@ -747,6 +760,9 @@ Version: $version
 	-s [file|fileStem] Reference brain (average e-2 by default)
 	-b [path] bin directory
 	-d [stem] registration subdirectory (default ./Registration)
+	   [nb if this begins in a dot then the value will be appended to both
+	   reformatted and Registration directories]
+	
 	-e File ending of input images (pic, nrrd, nhdr)
 	-o File ending of output images (bin, nrrd, nhdr) - defaults to torsten raw bin
 

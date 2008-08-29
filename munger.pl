@@ -132,7 +132,7 @@ if($opt{d}){
 
 # Set default lock message
 #my $lockmessage=$opt{k}?$opt{k}:"";
-my $lockmessage=$opt{k}?$opt{k}:getpgrp(0);
+my $lockmessage=$opt{k}?$opt{k}:$hostName.":".getpgrp(0);
 print "JOB ID = $lockmessage\n";
 
 my $affineTotal=0;	
@@ -752,7 +752,7 @@ Version: $version
 	   (nb cannot produce commands that depend on earlier commands)
 	-u statUs - display number of images, registrations etc
 	-z turn gzip off (on by default)
-	-k lock message ie contents of lock file (defaults to proces id)
+	-k lock message ie contents of lock file (defaults to hostname:process id)
 
 	-a run affine transform
 	-w run warp transform

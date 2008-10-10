@@ -416,16 +416,14 @@ sub runReformat {
 	
 	# Construct the outlist - basename gets the name of the file from full path
 	my $outlist=basename($baseinlist);  #eg averagegoodbrain_brainame_warp40-5_e1e-1_c4.list
-	# remove up to (and including) second underscore and trim terminal .list
-	$outlist=~s/^[^_]+_[^_]+_(.*)\.list$/$1/i;
+	# Remove everything up to warp or 9dof
+	$outlist=~s/^.*_((warp|9dof|pa)[^.]*)\.list$/$1/i;
 	# nb registration channel may be different from channel of current image
-	# which is what we want here
-		
-	# "a" seems to be trapped by the numeric comparison somehow
+	# which is what we want here		
 	if( $level=~m/[0-9]/ ){
 		# specific warp level ... registration will be in a subdir in this case
 		$outlist=$referenceStem."_".$brain.$channel."_".$outlist."_lev".$level;
-	} elsif ($level eq "f") {
+	} elsif ($level =~m /[fap]/) {
 		# final warp level
 		$outlist=$referenceStem."_".$brain.$channel."_".$outlist;
 	}
@@ -759,7 +757,7 @@ Version: $version
 	-c [01|02|..] channels for registration (default 01 or "")
 	-r [01|02|..] run reformat on these channels
 	-l [p|a|0..9|f] run reformat on these levels
-	   (default f=final warp, p=prinicpal axis, a=affine, 0..9=warp intermediates)
+	   (default f=final warp, p=principal axis, a=affine, 0..9=warp intermediates)
 	-f [01|02|..] channel of the images used for registration - default is 01
 
 	[nb use -f to specify the channel of the images that were previously used to

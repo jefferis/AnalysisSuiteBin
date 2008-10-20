@@ -107,6 +107,7 @@ $binDir=$opt{b}?$opt{b}:$binDir;
 my $warpCommand=File::Spec->catdir($binDir,"warp");
 my $affCommand=File::Spec->catdir($binDir,"registration");
 my $initialAffCommand=File::Spec->catdir($binDir,"make_initial_affine");
+my $landmarksAffCommand=File::Spec->catdir($binDir,"align_landmarks");
 my $reformatCommand=File::Spec->catdir($binDir,"reformat");
 
 my $regChannels=$opt{c}?$opt{c}:"01";
@@ -291,11 +292,15 @@ sub munge {
 	}
 	# run registrations if this file is of the correct channel
 	if($channel=="" || $regChannels=~/$channel/){
-		runInitialAffine( $filepath,$brain,$channel) if $opt{P};		
-		runAffine( $filepath,$brain,$channel) if $opt{a};		
+		if ($opt{L}){
+			runLandmarksAffine( $filepath,$brain,$channel);
+		} else {
+			runInitialAffine( $filepath,$brain,$channel) if $opt{P};
+		}
+		runAffine( $filepath,$brain,$channel) if $opt{a};
 		# run the warp transformation
 		runWarp($filepath,$brain,$channel) if $opt{w};
-	} 
+	}
 	if ($channel=="" || $reformatChannels=~/$channel/) {
 		foreach (split(//,$reformatLevels)){
 			runReformat( $filepath,$brain,$channel,$_) if $opt{r};	
@@ -545,7 +550,74 @@ sub runAffine {
 		return 0;			
 	}
 }
+sub getLandmarksFile {
+	my ($filepath) = @_;
+	my $landmarks;
+	# if a directory, then there should be a file inside called landmarks
+	if(-d $filepath){
+		$landmarks=File::Spec->catfile($filepath,"landmarks");
+		return (-f $landmarks)?$landmarks:"";
+	}
+	# trim off gz ending
+	$filepath=~s|\.gz$||;
+	print $filepath."\n";
+	# check for x.y.landmarks
+	$landmarks=$filepath.".landmarks";
+	print $landmarks."\n";
+	return $landmarks if(-f $landmarks);
+	# check for x.landmarks
+	$landmarks=$filepath;
+	$landmarks=~s|\.([^.]+)$|.landmarks|;
+	print $landmarks."\n";
+	return $landmarks if(-f $landmarks);
+	# check for x.landmarks
+	return "";
+}
 
+sub runLandmarksAffine {
+	my ($filepath,$brain,$channel) = @_;
+
+	my $sampleLandmarks = getLandmarksFile($filepath);
+	my $refLandmarks = getLandmarksFile($referenceImage);
+
+	print "sample = $sampleLandmarks; ref = $refLandmarks\n";
+	
+	my $outlist=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_pa.list");
+	my $outfile=File::Spec->catfile($outlist,"registration");
+	if( ! -s $outfile ){
+		# no output file, so just continue
+	} elsif ( -M $sampleLandmarks > -M $outfile &&  -M $refLandmarks > -M $outfile ) {
+		# ok age of input & ref landmarks > age of registration file so no need to rerun
+		return 0;		
+	}
+	# bail out if somebody else is working on this
+	return 0 if (-f "$outlist/registration.lock");
+	# now committed, so immediately make output dir and lock it
+	myexec ( "mkdir", "-p", $outlist ) unless $opt{t};
+	makelock("$outlist/registration.lock");
+	my @cmd=( $landmarksAffCommand, $refLandmarks, $sampleLandmarks, $outlist );
+	my $cmd_string = join( ' ', @cmd );
+	if( $opt{v}){
+		print  "A: Running align_landmarks with command: $cmd_string\n";
+	} else {
+		print  "AlignLandmarks:$brain$channel ";
+	}
+	# if not in test mode
+	if(!$opt{t}){
+		# keep a copy of the commandline
+		dumpcommand( "Command was:", join("\0",@cmd), "$outlist/cmd.sh" ) unless $opt{t};
+		# run the command
+		#print "Actually running cmd\n";		
+		#print `$cmd`;	
+		myexec (@cmd);
+		#print "Actually finished cmd\n";		
+		myexec ("rm","$outlist/registration.lock");
+		# $affineTotal++;
+		return $outlist;			
+	} else {
+		return 0;			
+	}	
+}
 sub runInitialAffine {
 	my ($filepath,$brain,$channel) = @_;	
 	
@@ -777,6 +849,7 @@ Version: $version
 	-o File ending of output images (bin, nrrd, nhdr) - defaults to torsten raw bin
 
 	-P find initial affine transform using image principal axes
+	-L find initial affine transform using landmarks
 	-I inverse consistent warp weight (--ic-weight) default 0, try 1e-5
 	-E [energy] energy of warp transform (default e-1)
 	-X [exploration] (default 16)
@@ -801,7 +874,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:P';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PL';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h};
 	

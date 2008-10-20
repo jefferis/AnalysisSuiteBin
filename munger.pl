@@ -490,7 +490,7 @@ sub runReformat {
 		$reformatTotal++;
 		# note -f forces overwrite of existing gz
 		myexec ( "gzip", "-f", "-9", "${outlist}/image.bin" ) 
-			unless $opt{z} or ($outputType eq "bin");
+			unless $opt{z} or ($outputType ne "bin");
 		myexec ( "rm", "${outlist}.lock" );
 		return $outlist;
 	} else {

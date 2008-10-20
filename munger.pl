@@ -802,7 +802,12 @@ sub dumpcommand {
 sub makelock {
 	my ($lockfile)=@_;
 	# bail if we are in test mode
-	return if $opt{t};	
+	return if $opt{t};
+
+	# check dir exists and make it if it doesn't
+	my $lockdir=dirname($lockfile);
+	myexec("mkdir","-p","$lockdir") unless -d $lockdir;
+
 	if($lockmessage){
 		open(FH,"> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
 		print FH $lockmessage;

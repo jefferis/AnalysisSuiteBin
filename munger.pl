@@ -510,7 +510,7 @@ sub runAffine {
 	my $listroot=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel);
 	my $outlist=$listroot."_9dof.list";
 	my $inputfile = $filepath;
-	$inputfile = File::Spec->catdir($listroot."_pa.list","registration") if $opt{P};	
+	$inputfile = File::Spec->catdir($listroot."_pa.list","registration") if $opt{P} || $opt{L};	
 
 	# Continue if an output file doesn't exist or
 	# -s means file exists and has non zero size
@@ -528,7 +528,7 @@ sub runAffine {
 	makelock("$outlist/registration.lock");
 
 	my @cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $referenceImage, $inputfile );
-	@cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $listroot."_pa.list" ) if $opt{P};
+	@cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $listroot."_pa.list" ) if $opt{P} || $opt{L};
 	
 	my $cmd_string = join( ' ', @cmd );
 	if( $opt{v}){

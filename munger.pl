@@ -802,13 +802,10 @@ sub makelock {
 
 	# write our lock message
 	open(FH,">> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
-	print FH $lockmessage;
+	print FH "$lockmessage\n";
 	close FH;
 	# now read back in 
-	open(FH,"< $lockfile") or die ("Can't read lockfile at $lockfile: $!\n");
-	my $firstLine=<FH>;
-	chomp $firstLine;
-	close (FH);
+	my $firstLine=getidfromlockfile($lockfile);
 	
 	# return true if we wrote the first line of the lock file
 	# (this of course only works if lock message is unique to each process)
@@ -819,6 +816,7 @@ sub getidfromlockfile {
 	my ($file)=@_;	
 	open (FH,"$file") or return "NULL";
 	my $line=<FH>;
+	chomp $line;
 	close(FH);
 	return($line);	
 }

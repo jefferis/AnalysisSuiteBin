@@ -359,10 +359,8 @@ sub runWarp {
 		}
 	}
 
-	# bail out if somebody else is working on this
-	return 0 if (-f "$outlist/registration.lock");
-	# now committed, so imediately lock output dir
-	makelock("$outlist/registration.lock");	
+	# try to make a lockfile (and bail if we can't because someone else already has)
+	return 0 unless makelock("$outlist/registration.lock");	
 	
 	my @cmd=( $warpCommand, split(/\s+/,$args), "-o", $outlist, $inlist );
 	my $cmd_string=join( ' ', @cmd );
@@ -469,10 +467,8 @@ sub runReformat {
 		}
 	}
 	
-	# bail out if somebody else is working on this
-	return 0 if (-f "${outlist}.lock");
-	# now committed, so immediately lock this directory
-	makelock("${outlist}.lock");
+	# try to make a lockfile (and bail if we can't because someone else already has)
+	return 0 unless makelock("${outlist}.lock");	
 	
 	# make command 
 	my @args=("-v","--set-null","0");	# makes null pixels black instead of white
@@ -522,10 +518,7 @@ sub runAffine {
 	}
 	
 	# bail out if somebody else is working on this
-	return 0 if (-f "$outlist/registration.lock");
-	# now committed, so immediately make output dir and lock it
-	myexec ( "mkdir", "-p", $outlist ) unless $opt{t};
-	makelock("$outlist/registration.lock");
+	return 0 unless makelock("$outlist/registration.lock");
 
 	my @cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $referenceImage, $inputfile );
 	@cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $listroot."_pa.list" ) if $opt{P} || $opt{L};
@@ -601,10 +594,9 @@ sub runLandmarksAffine {
 		return 0;		
 	}
 	# bail out if somebody else is working on this
-	return 0 if (-f "$outlist/registration.lock");
-	# now committed, so immediately make output dir and lock it
-	myexec ( "mkdir", "-p", $outlist ) unless $opt{t};
-	makelock("$outlist/registration.lock");
+	# try to make a lockfile (and bail if we can't because someone else already has)
+	return 0 unless makelock("$outlist/registration.lock");	
+
 	my @cmd=( $landmarksAffCommand, @args, $refLandmarks, $sampleLandmarks, $outlist );
 	my $cmd_string = join( ' ', @cmd );
 
@@ -647,11 +639,8 @@ sub runInitialAffine {
 		return 0;		
 	}
 	
-	# bail out if somebody else is working on this
-	return 0 if (-f "$outlist/registration.lock");
-	# now committed, so immediately make output dir and lock it
-	myexec ( "mkdir", "-p", $outlist ) unless $opt{t};
-	makelock("$outlist/registration.lock");
+	# try to make a lockfile (and bail if we can't because someone else already has)
+	return 0 unless makelock("$outlist/registration.lock");	
 
 	my @cmd=( $initialAffCommand, split(/\s+/,$args), $referenceImage, $filepath, $outfile );
 	my $cmd_string = join( ' ', @cmd );
@@ -801,20 +790,29 @@ sub dumpcommand {
 
 sub makelock {
 	my ($lockfile)=@_;
-	# bail if we are in test mode
-	return if $opt{t};
+	# just return if we are in test mode
+	return 1 if $opt{t};
 
 	# check dir exists and make it if it doesn't
 	my $lockdir=dirname($lockfile);
 	myexec("mkdir","-p","$lockdir") unless -d $lockdir;
 
-	if($lockmessage){
-		open(FH,"> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
-		print FH $lockmessage;
-		close FH;		
-	} else {
-		myexec("touch",$lockfile);
-	}	
+	# Bail if someone else has already made a lock file
+	return 0 if (-f "$lockfile");
+
+	# write our lock message
+	open(FH,">> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
+	print FH $lockmessage;
+	close FH;
+	# now read back in 
+	open(FH,"< $lockfile") or die ("Can't read lockfile at $lockfile: $!\n");
+	my $firstLine=<FH>;
+	chomp $firstLine;
+	close (FH);
+	
+	# return true if we wrote the first line of the lock file
+	# (this of course only works if lock message is unique to each process)
+	return ($firstLine eq $lockmessage)?1:0;
 }
 
 sub getidfromlockfile {

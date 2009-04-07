@@ -64,6 +64,7 @@ if($app eq "average_grey"){
 # 2) Choose Output file
 my $outfile =`$CD filesave --title --no-newline "Output File" --text  "Please choose the name/location for the new average brain"`;
 die "No outfile specified" if $outfile eq "";
+$outfile=$outfile.".nrrd" unless($outfile =~m/[.]/);
 
 # 3) Add additional options (also provide help screen)
 my ($button2, $term)=(-1,-1);
@@ -89,7 +90,7 @@ do{
 } while ($button2!=1);
 
 # 4) Run, Test or Cancel
-$cmd="$fullapp $MAINARGS $EXTRAARGS -o RAW3D:\"$outfile/image.bin\" $imagelist";
+$cmd="$fullapp $MAINARGS $EXTRAARGS -o NRRD:\"$outfile\" $imagelist";
 $button=-1;
 do{
  	$fullcmd="$CD msgbox --title \"Run\" --no-newline --text \"Run munger.pl, see the Command line or Cancel\" --button1 \"Run\" --button2 \"Command\" --button3 \"Cancel\"";
@@ -97,9 +98,9 @@ do{
 	
 	if ($button == 1) {
 		print "Running: $cmd\n";
-		makeCommandFile($rootDir,$outfile);		
+		makeCommandFile($rootDir,$outfile);
 		print `$cmd`;
-		print `gzip -f -9 \"$outfile/image.bin\"`;		
+		# print `gzip -f -9 \"$outfile/image.bin\"`;		
 	} elsif ($button == 3) {
 		print "Cancelling'\n";
 		exit -1;
@@ -112,13 +113,14 @@ do{
 
 sub makeCommandFile{
 	# Make a .command file that can be used to rerun the average
-	my ($rootDir,$outfile)=@_;	
+	my ($rootDir,$outfile)=@_;
 	use POSIX qw(strftime);
-	my $mtime= strftime("%Y-%m-%d %H:%M:%S %Z",localtime );		
-	mkdir "$outfile";
-	open CMD, "> $outfile/average.command";	
+	my $mtime= strftime("%Y-%m-%d %H:%M:%S %Z",localtime );
+	my $outdir=basename($outfile);
+	mkdir "$outdir";
+	open CMD, "> $outfile-average.command";	
 	print CMD "#!/bin/sh\n# $mtime\n cd \"$rootDir\"\n $cmd";
-	chmod 0755, "$outfile/average.command";	
+	chmod 0755, "$outfile-average.command";	
 }
 
 sub findRootDir {

@@ -138,6 +138,8 @@ print "JOB ID = $lockmessage\n";
 
 my $affineTotal=0;
 my $initialAffineTotal=0;
+my $affineTotalFailed=0;
+my $initialAffineTotalFailed=0;
 my $warpTotal=0;	
 my $reformatTotal=0;	
 
@@ -196,8 +198,8 @@ if(-f $inputFileSpec || $inputFileSpec=~m/\.study/ ) {
 	}
 	
 	find({ wanted => \&handleFind, follow => 1 },$imageRoot);	
-	print "\nRan $initialAffineTotal initial affine registrations\n";	
-	print "Ran $affineTotal affine registrations\n";	
+	print "\nRan $initialAffineTotal initial affine registrations of which $initialAffineTotalFailed failed\n";	
+	print "Ran $affineTotal affine registrations of which $affineTotalFailed failed\n";	
 	print "Ran $warpTotal warp registrations\n";	
 	print "Reformatted $reformatTotal images\n";
 } else {
@@ -536,7 +538,8 @@ sub runAffine {
 		# run the command
 		#print "Actually running cmd\n";		
 		#print `$cmd`;	
-		myexec (@cmd);
+		my $rval=myexec (@cmd);
+		$affineTotalFailed++ unless ($rval==0);
 		#print "Actually finished cmd\n";		
 		myexec ("rm","$outlist/registration.lock");
 		$affineTotal++;
@@ -620,7 +623,8 @@ sub runLandmarksAffine {
 		# run the command
 		#print "Actually running cmd\n";		
 		#print `$cmd`;	
-		myexec (@cmd);
+		my $rval=myexec (@cmd);
+		$initialAffineTotalFailed++ unless ($rval==0);
 		#print "Actually finished cmd\n";		
 		myexec ("rm","$outlist/registration.lock");
 		$initialAffineTotal++;
@@ -664,7 +668,8 @@ sub runInitialAffine {
 		# run the command
 		#print "Actually running cmd\n";		
 		#print `$cmd`;	
-		myexec (@cmd);
+		my $rval=myexec (@cmd);
+		$affineTotalFailed++ unless ($rval==0);
 		#print "Actually finished cmd\n";		
 		myexec ("rm","$outlist/registration.lock");
 		$affineTotal++;

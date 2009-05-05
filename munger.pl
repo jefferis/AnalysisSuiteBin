@@ -595,7 +595,15 @@ sub runLandmarksAffine {
 	}
 	# bail out if somebody else is working on this
 	# try to make a lockfile (and bail if we can't because someone else already has)
-	return 0 unless makelock("$outlist/registration.lock");	
+	return 0 unless makelock("$outlist/registration.lock");
+	
+	if($opt{v}){
+		print "$referenceImage exists ", (-e $referenceImage)," writeable ", (-w $referenceImage),"\n";
+		print "$filepath exists ", (-e $filepath)," writeable ", (-w $filepath),"\n";
+		print "$sampleLandmarks exists ", (-e $sampleLandmarks)," writeable ", (-w $sampleLandmarks),"\n";		
+		print "$refLandmarks exists ", (-e $refLandmarks)," writeable ", (-w $refLandmarks),"\n";		
+		print "$outlist exists ", (-e $outlist)," writeable ", (-w $outlist),"\n";		
+	}
 
 	my @cmd=( $landmarksAffCommand, @args, $refLandmarks, $sampleLandmarks, $outlist );
 	my $cmd_string = join( ' ', @cmd );

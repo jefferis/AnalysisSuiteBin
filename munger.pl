@@ -197,7 +197,9 @@ if(-f $inputFileSpec || $inputFileSpec=~m/\.study/ ) {
 		print "image root is: ",$imageRoot,"\n";
 	}
 	
-	find({ wanted => \&handleFind, follow => 1 },$imageRoot);	
+	find({ wanted => \&handleFind, follow => 1 },$imageRoot);
+	print "-"x25,"\nRescanning images directory a second time\n","-"x25,"\n" if($opt{v});
+	find({ wanted => \&handleFind, follow => 1 },$imageRoot);
 	print "\nRan $initialAffineTotal initial affine registrations of which $initialAffineTotalFailed failed\n";	
 	print "Ran $affineTotal affine registrations of which $affineTotalFailed failed\n";	
 	print "Ran $warpTotal warp registrations\n";	

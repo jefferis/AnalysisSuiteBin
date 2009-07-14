@@ -26,9 +26,10 @@
 # v1.11 2006-10-14 - fixed a locking bug for reformat and significantly
 #       improved status function (faster, prints dirs with -v option)
 # v1.12 2009-07-14 - Substantial code tidying, usage when no arguments given
+# v1.13 2009-07-14 - Switch to using reformatx (reformat was dropped from cmtk)
 
 require 5.004;
-my $version= 1.12;
+my $version= 1.13;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
@@ -99,7 +100,7 @@ my $warpCommand=File::Spec->catdir($binDir,"warp");
 my $affCommand=File::Spec->catdir($binDir,"registration");
 my $initialAffCommand=File::Spec->catdir($binDir,"make_initial_affine");
 my $landmarksAffCommand=File::Spec->catdir($binDir,"align_landmarks");
-my $reformatCommand=File::Spec->catdir($binDir,"reformat");
+my $reformatCommand=File::Spec->catdir($binDir,"reformatx");
 
 my $regChannels=$opt{c}?$opt{c}:"01";
 my $reformatChannels=$opt{r}?$opt{r}:"01";
@@ -458,8 +459,9 @@ sub runReformat {
 	return 0 unless makelock("${outlist}.lock");	
 	
 	# make command 
-	my @args=("-v","--set-null","0");	# makes null pixels black instead of white
-	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile}, "--study0", $referenceImage, "--study1", $inputimgfilepath, $inlist );
+	my @args=("-v","--pad-out","0");	# makes null pixels black instead of white
+	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile},
+	    "--floating", $inputimgfilepath, $referenceImage, $inlist );
 	my $cmd_string=join(' ',@cmd);
 
 	if($opt{v}){

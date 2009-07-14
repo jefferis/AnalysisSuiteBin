@@ -25,9 +25,10 @@
 #       Also a great deal of tidying up including reducing host dependence
 # v1.11 2006-10-14 - fixed a locking bug for reformat and significantly
 #       improved status function (faster, prints dirs with -v option)
+# v1.12 2009-07-14 - Substantial code tidying, usage when no arguments given
 
 require 5.004;
-my $version= 1.11;
+my $version= 1.12;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
@@ -52,58 +53,48 @@ my $outputType=$opt{o}?$opt{o}:"nrrd";
 my $warpSuffix="warp_m".$metric."g".$gridspacing."c".$coarsest."e".$energyweight."x".$exploration."r".$refine;
 my $icweight=$opt{I}?$opt{I}:"0";
 
-# RECOGNISE SPECIFIC MACHINE TO SET MACHINE-SPECIFIC OPTIONS
-# EDIT TO RECOGNISE YOUR MACHINE IF REQUIRED
+# STORE CURRENT HOSTNAME
+# YOU CAN USE THIS TO SET MACHINE-SPECIFIC OPTIONS
+# EDIT TO RECOGNISE YOUR MACHINE IF IT CAN HAVE DIFFERENT HOSTNAMES
 my $hostName=`hostname`; chomp($hostName); print STDERR "hostname = $hostName";
-$hostName = "gjpb" if ($hostName =~/gjpb/i or $hostName eq "jefferis.joh.cam.ac.uk" or $hostName eq "notched1.zoo.cam.ac.uk" or $hostName eq "rechaffe.joh.cam.ac.uk" );
-$hostName = "gjz5" if ($hostName =~/(gjz5|notched4)/i);
-$hostName = "biox" if ($hostName =~/(bioxcluster|compute)/i);
 print STDERR "; short hostname = $hostName\n";
 print `echo User path is \$PATH` if $opt{v};
 
-# If we are on vesalius threads defaults to 12 otherwise auto
-my $threads="auto";
-$threads = 12 if $hostName =~/vesalius/i;
-$threads=$opt{T}?$opt{T}:$threads;
+my $threads=$opt{T}?$opt{T}:"auto";
 
-# DEFAULT LOCATION OF REFERENCE IMAGE
-# EDIT IF REQUIRED
-# default
-my $referenceImage=$ENV{"HOME"}."/projects/ReferenceImages/average-goodbrains-warp40-5_e1e-2.study";
-# ... alternative if that doesn't exist
-$referenceImage=$ENV{"HOME"}."/projects/PN2/ReferenceImages/average-goodbrains-warp40-5_e1e-2.study" unless (-d $referenceImage);
-# machine specific settings
-$referenceImage="/Users/jefferis/projects/ReferenceImages/average/average-goodbrains-warp40-5_e1e-2.study" if $hostName =~/(gsxej2|gjg5|spiracle)/;
-$referenceImage="/Users/LuoG5/Greg/PN2/ReferenceImages/average/average-goodbrains-warp40-5_e1e-2.study" if $hostName eq "Bio-LL13.Stanford.EDU";
-$referenceImage="/u/jefferis/torsten/ReferenceImages/average/average-goodbrains-warp40-5_e1e-2.study" if $hostName =~/vesalius/i;
-# if supplied on command line, thent that overrides
-$referenceImage=$opt{s}?$opt{s}:$referenceImage;
-
+my $referenceImage=$opt{s};
 print "Reference brain is $referenceImage\n" if $opt{v};
 die "Unable to read reference brain $referenceImage" unless -r($referenceImage);
 
-my $referenceStem="average-goodbrains";
-if($opt{s}){
-	$referenceStem=$opt{s};	
-	# remove any terminal slashes 
-	# (which would cause basename to return empty)
-	$referenceStem=~s/^(.*)\/$/$1/; 
-	$referenceStem=basename($referenceStem);
-
-	# if this is a reformatted brain then change the underscore to a hyphen 
-	# between brain id and warp/9d0f
-	$referenceStem=~s/[_](warp|9dof)/-$1/; 
-
-	# remove up to first dot or underscore
-	$referenceStem =~ s/^([^._]*)[._].*$/$1/;
-}
+# Extract standard stem from reference image name 
+my $referenceStem=$referenceImage;
+# remove any terminal slashes 
+# (which would cause basename to return empty)
+$referenceStem=~s/^(.*)\/$/$1/; 
+$referenceStem=basename($referenceStem);
+# if this is a reformatted brain then change the underscore to a hyphen 
+# between brain id and warp/9d0f
+$referenceStem=~s/[_](warp|9dof)/-$1/; 
+# remove up to first dot or underscore
+$referenceStem =~ s/^([^._]*)[._].*$/$1/;
 print "Reference brain stem is $referenceStem\n" if $opt{v};
 
-# SET UP LOCATION OF WARPING TOOLS
-# EDIT IF REQUIRED
-my $binDir=$ENV{"HOME"}."/bin/";
-$binDir="/u/rohlfing/projects/FlyBrain/bin/" if $hostName =~/vesalius/i;
-$binDir=$opt{b}?$opt{b}:$binDir;
+# Set up location of warping tools
+# Specify non standard locations explicitly or add to $PATH
+my $binDir=$opt{b};
+if($opt{b}){
+    $binDir=$opt{b};
+}else{
+    # see if we can find the warp tool in the path
+    my $warppath = `which warp`;
+    if ($warppath) {
+        $binDir = dirname($warppath);
+    } elsif (-r "/Applications/IGSRegistrationTools/RegistrationRunner.app/Contents/Resources/"){
+        $binDir = "/Applications/IGSRegistrationTools/RegistrationRunner.app/Contents/Resources/";
+    } die "No binary directory specified and warp tools not in PATH or /Applications/IGSRegistrationTools";
+}
+die "Can't access binary directory $binDir" unless -r $binDir;
+
 my $warpCommand=File::Spec->catdir($binDir,"warp");
 my $affCommand=File::Spec->catdir($binDir,"registration");
 my $initialAffCommand=File::Spec->catdir($binDir,"make_initial_affine");
@@ -155,8 +146,6 @@ my $inputFileSpec=$ARGV[0];
 # remove any terminal slashes 
 $inputFileSpec=~s/^(.*)\/$/$1/; 
 
-# NB There was a daft error in which $rootDir was local to the if
-# clauses and therefore not found in munge
 chomp(my $rootDir=`pwd`);
 # so that we can do munger.pl . instead of munger.pl `pwd`
 $inputFileSpec=$rootDir if $inputFileSpec eq ".";
@@ -217,7 +206,7 @@ sub findRootDir {
 	# nb it is necesary to convert the directory specification
 	# to an absolute path to ensure that the open in &readheader
 	# works properly during multi directory traversal
-	# since vesalius doesn't have an up to date File::Spec module
+	# since we can't always rely on an up to date File::Spec module
 	# have to make my own
 	if(!File::Spec->file_name_is_absolute($fullpath)){
 		my $curDir=cwd();
@@ -246,13 +235,7 @@ sub findRelPathToImgDir {
 	
 	# the quick way, but not all systems have File::Spec->abs2rel
 	# my($volume,$directories,$file)= File::Spec->splitpath(File::Spec->abs2rel($filepath,$imageRoot));	
-	#my($volume2,$directories2,$file2)= File::Spec->splitpath($filepath)[1];	
-	
-	# doesn't work on vesalius
-	#my $rdirectories2 = (File::Spec->splitpath(File::Spec->canonpath($filepath)))[1];
-#	my @rdirs = File::Spec->splitdir($rdirectories2);	
-#	my @rdirs = File::Spec->splitdir((File::Spec->splitpath($filepath))[1]);	
-#	print STDERR "\n",File::Spec->catdir(@rdirs),"\n";
+
 	my ($volume,$directories,$file) = File::Spec->splitpath( $filepath );
 	my @dirs = File::Spec->splitdir($directories);	
 	# check this works if @dirs has one element
@@ -903,6 +886,5 @@ sub init {
 	use Getopt::Std;      # to handle command line options
 	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PL';
 	getopts( "$opt_string", \%opt ) or usage();
-	usage() if $opt{h};
-	
+	usage() if $opt{h} or $#ARGV==-1;
 }

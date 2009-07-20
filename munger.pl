@@ -27,9 +27,10 @@
 #       improved status function (faster, prints dirs with -v option)
 # v1.12 2009-07-14 - Substantial code tidying, usage when no arguments given
 # v1.13 2009-07-14 - Switch to using reformatx (reformat was dropped from cmtk)
+# v1.14 2009-07-20 - Prevent munger from processing images beginning with .
 
 require 5.004;
-my $version= 1.13;
+my $version= 1.14;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
@@ -249,10 +250,10 @@ sub findRelPathToImgDir {
  
 
 sub handleFind {
-	# check if file ends in .pic or .pic.gz case insensitive
-	if ($File::Find::name =~ /.*\.(pic(\.gz){0,1}|n(rrd|hdr))$/i ){
-		munge($File::Find::name);		
-	}
+	# check if file ends in pic(.gz) nrrd or nhdr case insensitive
+	# also insist that it does not begin with a period (hidden file)
+	munge($File::Find::name) if 
+		($File::Find::name =~ /^[.].*\.(pic(\.gz){0,1}|n(rrd|hdr))$/i);
 }
 
 sub munge {

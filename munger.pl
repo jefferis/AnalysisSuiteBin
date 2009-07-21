@@ -324,15 +324,16 @@ sub runWarp {
 	return 0 unless (-s "$inlist/registration.gz") || (-s "$inlist/registration") ;	
 	
 	my $outfile;
+	my $finalRegLevel=$opt{R}+1;
 	if($opt{0}){
 		# test for the final registration output file ... 
 		$outfile = File::Spec->catfile($outlist,"registration");
 	} else {
-		# ... BUT where possible prefer to test for the level-04 file which is identical
+		# ... BUT where possible prefer to test for the final level file which is identical
 		# to the one that is then saved in the root directory (if all went well)
 		# this will avoid an incomplete terminated registration which does 
 		# generate a registration file in the root dir from blocking reregistration
-		$outfile = File::Spec->catfile($outlist,"level-04.list","registration");		
+		$outfile = File::Spec->catfile($outlist,"level-0${finalRegLevel}.list","registration");		
 	}
 	# Continue if outdir doesn't exist OR
 	# if age of indir > age of outdir & there is a registration

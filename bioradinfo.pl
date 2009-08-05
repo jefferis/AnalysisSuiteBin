@@ -124,17 +124,18 @@ sub readheader{
 	
 	# See http://www.perldoc.com/perl5.8.0/pod/func/pack.html for details
 	# of unpack format strings
-	my $HeaderFormat='vvv@8v@54vh4';
+	my $HeaderFormat='vvv@14v@54vh4';
 	# looks like mag isn't really used any more
 	# See http://www.cs.ubc.ca/spider/ladic/text/biorad.txt for details
 	# of biorad header
-	($nx, $ny, $npics,$byte_format,$lens,$mag) = unpack($HeaderFormat, $in);
+	my ($nx, $ny, $npics,$byte_format,$lens,$mag) = unpack($HeaderFormat, $in);
 	# removed LENS = since the information appears more accurately in notes
 	print "WIDTH = $nx\nHEIGHT = $ny\nNPICS = $npics\n";
 	#print "WIDTH = $nx\nHEIGHT = $ny\nNPICS = $npics\nLENS = $lens\n";
 	
 	# Move to end of raw data
-	my $datalength=$nx*$ny*$npics;
+	# nb 8bit has $byte_format=1, 16 bit $byte_format=0
+	my $datalength=$nx*$ny*$npics*($byte_format==0?2:1);
 	if($gzFileOpen) {
 		# This is a pain - there is no seek method for gz - just have to decompress
 		# the whole thing

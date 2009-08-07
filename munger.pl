@@ -28,6 +28,8 @@
 # v1.12 2009-07-14 - Substantial code tidying, usage when no arguments given
 # v1.13 2009-07-14 - Switch to using reformatx (reformat was dropped from cmtk)
 # v1.14 2009-07-20 - Prevent munger from processing images beginning with .
+# v1.15 2009-08-08 - Allow a max number of registrations to be set allowing
+#       jobs to be somewhat time-limited
 
 require 5.004;
 my $version= 1.14;
@@ -133,8 +135,13 @@ my $affineTotal=0;
 my $initialAffineTotal=0;
 my $affineTotalFailed=0;
 my $initialAffineTotalFailed=0;
-my $warpTotal=0;	
-my $reformatTotal=0;	
+my $warpTotal=0;
+my $reformatTotal=0;
+
+my $maxtime=$opt{m}?$opt{m}:8760; # one year (in hours)
+$maxtime=$maxtime*3600; # convert to seconds
+my $starttime=time(); # record our starting time (in seconds)
+print STDERR "Start time is: $starttime seconds\n" if $opt{v};
 
 my %found;	# hash to store filenames for status function
 
@@ -288,9 +295,14 @@ sub munge {
 		} else {
 			runInitialAffine( $filepath,$brain,$channel) if $opt{P};
 		}
-		runAffine( $filepath,$brain,$channel) if $opt{a};
-		# run the warp transformation
-		runWarp($filepath,$brain,$channel) if $opt{w};
+		if((time()-$starttime)<$maxtime){
+			# only run registrations if we haven't run too many already
+			runAffine( $filepath,$brain,$channel) if $opt{a};
+			# run the warp transformation
+			runWarp($filepath,$brain,$channel) if $opt{w};			
+		} else {
+			print STDERR "Skipping registrations because maxtime exceeded\n" if $opt{v};
+		}
 	}
 	if ($channel eq "" || $reformatChannels=~/$channel/) {
 		foreach (split(//,$reformatLevels)){
@@ -836,6 +848,8 @@ Version: $version
 	-u statUs - display number of images, registrations etc
 	-z turn gzip off (on by default)
 	-k lock message ie contents of lock file (defaults to hostname:process id)
+	-m maximum time to keep starting registrations (in hours, default 8760=1y)
+	   nb this will not stop any running registrations
 
 	-a run affine transform
 	-w run warp transform
@@ -887,7 +901,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PL';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PLm:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h} or $#ARGV==-1;
 }

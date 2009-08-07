@@ -311,11 +311,10 @@ sub runWarp {
 	print "W: outlist = $outlist\n" if $opt{v};	
 	
 	my $args="-v --metric $metric --jacobian-weight $jacobian";	
-	$args.=" --threads $threads" unless $hostName =~/gjpb/i;			
+	$args.=" --threads $threads";
 	$args.=" --spline --fast -e $exploration --grid-spacing $gridspacing ";	
 	$args.=" --energy-weight $energyweight --adaptive-fix --refine $refine --coarsest $coarsest";	
-	# vesalius doesn't  yet have this parameter
-	$args.=" --ic-weight $icweight" if !($hostName =~/vesalius/i);
+	$args.=" --ic-weight $icweight";
 	$args.=" --output-intermediate" unless $opt{0};	
 	# add any extra arguments
 	$args.=" ".$opt{W};	
@@ -489,7 +488,7 @@ sub runAffine {
 	my ($filepath,$brain,$channel) = @_;	
 	
 	my $args="-i -v --dofs 6 --dofs 9";
-	$args.=" --threads $threads" unless $hostName =~/gjpb/i;
+	$args.=" --threads $threads";
 	# add any extra arguments
 	$args.=" ".$opt{A};	
 	# new version has relative filenames in output dir depending on input hierarchy
@@ -872,7 +871,7 @@ Version: $version
 	-G [grid-spacing] (default 40)
 	-R [refine] (default 3)
 	-J [0 to 1] jacobian-weight volume constraining param (default 0)
-	-T [threads] (default auto or 12 on vesalius)
+	-T [threads] (default auto)
 	
 	-A [option] additional options for affine transformation
 	-W [option] additional options for warp transformation

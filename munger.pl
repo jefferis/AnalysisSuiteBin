@@ -390,7 +390,8 @@ sub runWarp {
 		# so try this:
 		# nb opt z indicates that we don't want to gzip; nb -f to over-write
 		myexec( "find", $outlist, "-name", "registration", "-exec", "gzip", "-f", "-9", "{}", ";" ) unless $opt{z};
-		myexec( "rm", "$outlist/registration.lock" );
+		
+		removelock("$outlist/registration.lock");
 		return $outlist;
 	} else {
 		return 0;		
@@ -503,7 +504,7 @@ sub runReformat {
 		# note -f forces overwrite of existing gz
 		myexec ( "gzip", "-f", "-9", "${outlist}/image.bin" ) 
 			unless $opt{z} or ($outputType ne "bin");
-		myexec ( "rm", "${outlist}.lock" );
+		removelock("${outlist}.lock");
 		truncatefile($inputimgfilepath) if($deleteInputImage =~ /^only/);
 		return $outlist;
 	} else {
@@ -557,7 +558,7 @@ sub runAffine {
 		my $rval=myexec (@cmd);
 		$affineTotalFailed++ unless ($rval==0);
 		#print "Actually finished cmd\n";		
-		myexec ("rm","$outlist/registration.lock");
+		removelock("$outlist/registration.lock");
 		$affineTotal++;
 		return $outlist;			
 	} else {
@@ -642,7 +643,7 @@ sub runLandmarksAffine {
 		my $rval=myexec (@cmd);
 		$initialAffineTotalFailed++ unless ($rval==0);
 		#print "Actually finished cmd\n";		
-		myexec ("rm","$outlist/registration.lock");
+		removelock("$outlist/registration.lock");
 		$initialAffineTotal++;
 		return $outlist;			
 	} else {
@@ -687,7 +688,7 @@ sub runInitialAffine {
 		my $rval=myexec (@cmd);
 		$affineTotalFailed++ unless ($rval==0);
 		#print "Actually finished cmd\n";		
-		myexec ("rm","$outlist/registration.lock");
+		removelock("$outlist/registration.lock");
 		$affineTotal++;
 		return $outlist;			
 	} else {
@@ -833,12 +834,17 @@ sub makelock {
 	open(FH,">> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
 	print FH "$lockmessage\n";
 	close FH;
-	# now read back in 
+	# now read back in ...
 	my $firstLine=getidfromlockfile($lockfile);
-	
-	# return true if we wrote the first line of the lock file
-	# (this of course only works if lock message is unique to each process)
-	return ($firstLine eq $lockmessage)?1:0;
+	# and check we wrote the first line (assuming msg is unique to this process)
+	return 0 unless ($firstLine eq $lockmessage);
+
+	return 1;
+}
+
+sub removelock {
+	my ($lockfile)=@_;
+	print STDERR "Unable to remove lock $lockfile\n" unless (unlink $lockfile);
 }
 
 sub getidfromlockfile {

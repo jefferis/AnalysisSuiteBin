@@ -471,6 +471,10 @@ sub runReformat {
 			return 0; # then bail out
 		}
 	}
+	# If we are running with -x any:delete or any:truncate then we 
+	# don't want to do any reformatting - we are just a separate 
+	# job that has been started to clear some space, so bail now!
+	return 0 if($deleteInputImage =~ /^any/);
 	
 	# try to make a lockfile (and bail if we can't because someone else already has)
 	return 0 unless makelock("${outlist}.lock");	
@@ -878,10 +882,12 @@ Version: $version
 	-k lock message ie contents of lock file (defaults to hostname:process id)
 	-m maximum time to keep starting registrations (in hours, default 8760=1y)
 	   nb this will not stop any running registrations
-	-x [never|only|any]:[truncate|delete] (eg only:delete or any:truncate)
-	   only => only the job that runs reformat
-	   any  => any job can delete (useful because you can run a cleanup job
-		       if it becomes clear that you are running short of space) 
+	-x [never|only|any]:[truncate|delete] Clear input images when done.
+	   default is never, eg only:truncate, any:delete
+	   only => only the job that runs reformat can clear input
+	   any  => any job can delete; in fact a job started with any will not
+	           reformat at all. This is useful because you can run a cleanup
+               job if it becomes clear that you are running short of space.
 	   truncate => leave a 0 length file with same mtime as original image
 
 	-a run affine transform

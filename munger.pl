@@ -838,13 +838,16 @@ sub makelock {
 	my $firstLine=getidfromlockfile($lockfile);
 	# and check we wrote the first line (assuming msg is unique to this process)
 	return 0 unless ($firstLine eq $lockmessage);
-
+	$SIG{'INT'}=sub { unlink $lockfile and die "Received Interrupt signal\n" };
+	$SIG{'USR2'}=sub { unlink $lockfile and die "Received USR2 signal\n" };
 	return 1;
 }
 
 sub removelock {
 	my ($lockfile)=@_;
 	print STDERR "Unable to remove lock $lockfile\n" unless (unlink $lockfile);
+	$SIG{'INT'}='DEFAULT';
+	$SIG{'USR2'}='DEFAULT';
 }
 
 sub getidfromlockfile {

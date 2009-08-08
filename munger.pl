@@ -30,9 +30,10 @@
 # v1.14 2009-07-20 - Prevent munger from processing images beginning with .
 # v1.15 2009-08-08 - Allow a max number of registrations to be set allowing
 #       jobs to be somewhat time-limited
+# v1.16 2009-08-08 - Add option to delete/truncate input images after reformat
 
 require 5.004;
-my $version= 1.14;
+my $version= 1.16;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
@@ -130,6 +131,8 @@ if($opt{d}){
 #my $lockmessage=$opt{k}?$opt{k}:"";
 my $lockmessage=$opt{k}?$opt{k}:$hostName.":".getpgrp(0);
 print "JOB ID = $lockmessage\n";
+
+my $deleteInputImage = $opt{x}?$opt{x}:"never";
 
 my $affineTotal=0;
 my $initialAffineTotal=0;
@@ -464,7 +467,8 @@ sub runReformat {
 		if ( (-f $testoutfile) && # there is an image file already
 			(-M $testoutfile < -M $inlist) && # and it's newer than the input reg
 			(-M $testoutfile < -M $inputimgfilepath) ) { # and newer than input img
-			return 0; # then bail out			
+			truncatefile($inputimgfilepath) if($deleteInputImage =~ /^any/);
+			return 0; # then bail out
 		}
 	}
 	
@@ -490,8 +494,10 @@ sub runReformat {
 		myexec ( "gzip", "-f", "-9", "${outlist}/image.bin" ) 
 			unless $opt{z} or ($outputType ne "bin");
 		myexec ( "rm", "${outlist}.lock" );
+		truncatefile($inputimgfilepath) if($deleteInputImage =~ /^only/);
 		return $outlist;
 	} else {
+		truncatefile($inputimgfilepath) if($deleteInputImage =~ /^only/);
 		return 0;
 	}
 }
@@ -834,6 +840,28 @@ sub getidfromlockfile {
 	return($line);	
 }
 
+sub truncatefile {
+	my ($filename)=@_;
+	return 0 unless ( -w $filename && -f $filename ); # writeable, plain file
+	my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+	       $atime,$mtime,$ctime,$blksize,$blocks)
+	           = stat($filename);
+
+	return 0 unless $deleteInputImage =~ /(truncate|delete)/;
+	my $action = $1;
+	return 0 if ($action eq "truncate") && ($size==0); # already truncated?
+	
+	print STDERR "About to $action file $filename\n" if $opt{v};
+	
+	return -1 if $opt{t}; # bail if testing
+	
+	return unlink($filename) if($action eq "delete");
+
+	truncate $filename,0;
+	# change modification times back to that of original file
+	return utime $atime,$mtime,$filename;
+}
+
 sub usage {
 	print STDOUT << "EOF"; 
 Usage: $0 [OPTIONS] <PICFILE/DIR>
@@ -850,6 +878,11 @@ Version: $version
 	-k lock message ie contents of lock file (defaults to hostname:process id)
 	-m maximum time to keep starting registrations (in hours, default 8760=1y)
 	   nb this will not stop any running registrations
+	-x [never|only|any]:[truncate|delete] (eg only:delete or any:truncate)
+	   only => only the job that runs reformat
+	   any  => any job can delete (useful because you can run a cleanup job
+		       if it becomes clear that you are running short of space) 
+	   truncate => leave a 0 length file with same mtime as original image
 
 	-a run affine transform
 	-w run warp transform
@@ -901,7 +934,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PLm:';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PLm:x:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h} or $#ARGV==-1;
 }

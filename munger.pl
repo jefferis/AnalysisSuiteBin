@@ -43,6 +43,10 @@ use strict;
 # Autoflush stdout - so that it always keeps up with STDERR
 $|=1;
 
+# A global variable that will be set when the QUIT signal is received
+my $quitNextImage=0;
+$SIG{'QUIT'} = 'interrupt';
+
 # hvtawuc:r:s:b:f:E:X:M:C:G:R:
 init(); # process command line options
 my $energyweight=$opt{E}?$opt{E}:"1e-1";
@@ -268,8 +272,10 @@ sub handleFind {
 
 sub munge {
 	my $filepath=shift;
-	my $filename=basename($filepath);	
+
+	die "Quitting after receiving QUIT signal" if $quitNextImage;
 	
+	my $filename=basename($filepath);		
 	# get the brain name
 	my $brain=$filename;	
 	$brain=~s/(_raw)?(0\d)?\.(pic(\.gz){0,1}|n(rrd|hdr))//i;	
@@ -864,6 +870,12 @@ sub truncatefile {
 	truncate $filename,0;
 	# change modification times back to that of original file
 	return utime $atime,$mtime,$filename;
+}
+
+sub interrupt {
+	my($signal)=@_;
+	print STDERR "Caught Interrupt\: $signal \n";
+	$quitNextImage=1 if($signal eq 'QUIT');
 }
 
 sub usage {

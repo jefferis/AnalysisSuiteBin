@@ -266,8 +266,7 @@ sub findRelPathToImgDir {
 sub handleFind {
 	# check if file ends in pic(.gz) nrrd or nhdr case insensitive
 	# also insist that it does not begin with a period (hidden file)
-	munge($File::Find::name) if 
-		($File::Find::name =~ /^[^.].*\.(pic(\.gz){0,1}|n(rrd|hdr))$/i);
+	munge($File::Find::name) if /^[^.].*\.(pic(\.gz){0,1}|n(rrd|hdr))$/i;
 }
 
 sub munge {

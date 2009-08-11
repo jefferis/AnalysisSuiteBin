@@ -125,7 +125,7 @@ sub readheader{
 	
 	# See http://www.perldoc.com/perl5.8.0/pod/func/pack.html for details
 	# of unpack format strings
-	my $HeaderFormat='vvv@14v@54vh4';
+	my $HeaderFormat='vvv@14v@64vh4';
 	# looks like mag isn't really used any more
 	# See http://www.cs.ubc.ca/spider/ladic/text/biorad.txt for details
 	# of biorad header

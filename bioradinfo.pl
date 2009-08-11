@@ -44,7 +44,7 @@ sub init()
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 {
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvlxzd:n';
+	my $opt_string = 'hvlxzd:ns';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h};
 }
@@ -57,6 +57,7 @@ Usage: $0 [OPTIONS] <PICFILE/DIR>
 
 	-h print this help
 	-v verbose ouput
+	-s short output (do not read calibration info in footer)
 	-l print file names with full path
 	-z NO Z axis correction (for refractive index mismatch)
 	-x eXclude .pic.gz files from directory search
@@ -131,7 +132,11 @@ sub readheader{
 	my ($nx, $ny, $npics,$byte_format,$lens,$mag) = unpack($HeaderFormat, $in);
 	# removed LENS = since the information appears more accurately in notes
 	print "WIDTH = $nx\nHEIGHT = $ny\nNPICS = $npics\n";
-	#print "WIDTH = $nx\nHEIGHT = $ny\nNPICS = $npics\nLENS = $lens\n";
+	print "BITDEPTH = ".($byte_format==0?16:8)."\n";
+	if($opt{s}){
+		print "LENS = $lens\n";
+		return;
+	} 
 	
 	# Move to end of raw data
 	# nb 8bit has $byte_format=1, 16 bit $byte_format=0

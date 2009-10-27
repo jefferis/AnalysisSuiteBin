@@ -100,7 +100,9 @@ if($opt{b}){
         $binDir = dirname($warppath);
     } elsif (-r "/Applications/IGSRegistrationTools/RegistrationRunner.app/Contents/Resources/"){
         $binDir = "/Applications/IGSRegistrationTools/RegistrationRunner.app/Contents/Resources/";
-    } die "No binary directory specified and warp tools not in PATH or /Applications/IGSRegistrationTools";
+    } else {
+		die "No binary directory specified and warp tools not in PATH or /Applications/IGSRegistrationTools";
+	}
 }
 die "Can't access binary directory $binDir" unless -r $binDir;
 

@@ -31,9 +31,10 @@
 # v1.15 2009-08-08 - Allow a max number of registrations to be set allowing
 #       jobs to be somewhat time-limited
 # v1.16 2009-08-08 - Add option to delete/truncate input images after reformat
+# v1.17 2009-10-27 - Add ability to specify multiple input images / dirs 
 
 require 5.004;
-my $version= 1.16;
+my $version= 1.17;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
@@ -159,60 +160,67 @@ if ($opt{p}){
 	open SCRIPT, "> $opt{p}";	
 }
 
-# Make a note of ARGV0 - the target file or dir
-my $inputFileSpec=$ARGV[0];
-# remove any terminal slashes 
-$inputFileSpec=~s/^(.*)\/$/$1/; 
-
 chomp(my $rootDir=`pwd`);
-# so that we can do munger.pl . instead of munger.pl `pwd`
-$inputFileSpec=$rootDir if $inputFileSpec eq ".";
+print "Root directory is $rootDir\n";
 
-if(-f $inputFileSpec || $inputFileSpec=~m/\.study/ ) {
-	# find the root dir even if we specifed images dir or subdir
-	# $rootDir=findRootDir($inputFileSpec);	
+my $nargs=$#ARGV;
+die usage() if($nargs==0);
+print "There are $nargs arguments\n" if $nargs>1;
 
-	# 2005-10-18 Actually would rather just use current as root dir
-	# that isn't too much of a hardship and if the image 
-	# is off in some other location ...
-	
-	print "Root directory is $rootDir\n";	
-	# Hmm not sure that this will work
-	&munge($inputFileSpec) ;
-	
-} elsif(-d $inputFileSpec){
-	# find the root dir even if we specifed images dir or subdir
-	$rootDir=findRootDir($inputFileSpec);
-	print "Changing to root directory: $rootDir\n";	
-	chdir($rootDir);	
-	
-	if($opt{u}){
-		status();
-		exit 0;
-	}
-	
-	# GJ 130105 - I think I prefer $imageRoot to $rootDir
-	# ie only look for images in specifed images dir.
-	# which will be the images subdir of $rootDir
-	# nb follow=1 implies that we will follow symlinks
-	# GJ 2006-10-22 - I want to be able to specify a subdir of image
-	# dir and restrict action to that
-	if ($inputFileSpec=~/$imageRoot/){
-		$imageRoot=$inputFileSpec;	
-		print "Setting image root to: ",$imageRoot,"\n";
+# process multiple arguments
+foreach my $inputFileSpec (@ARGV){
+	# remove any terminal slashes 
+	$inputFileSpec=~s/^(.*)\/$/$1/; 
+
+	# so that we can do munger.pl . instead of munger.pl `pwd`
+	$inputFileSpec=$rootDir if $inputFileSpec eq ".";
+
+	if(-f $inputFileSpec || $inputFileSpec=~m/\.study/ ) {
+		# find the root dir even if we specifed images dir or subdir
+		# $rootDir=findRootDir($inputFileSpec);	
+
+		# 2005-10-18 Actually would rather just use current as root dir
+		# that isn't too much of a hardship and if the image 
+		# is off in some other location ...
+
+		# Hmm not sure that this will work
+		# print "inputFileSpec = $inputFileSpec\n";
+		&munge($inputFileSpec) ;
+
+	} elsif(-d $inputFileSpec){
+		# find the root dir even if we specifed images dir or subdir
+		$rootDir=findRootDir($inputFileSpec);
+		print "Changing to root directory: $rootDir\n";	
+		chdir($rootDir);	
+
+		if($opt{u}){
+			status();
+			exit 0;
+		}
+
+		# GJ 130105 - I think I prefer $imageRoot to $rootDir
+		# ie only look for images in specifed images dir.
+		# which will be the images subdir of $rootDir
+		# nb follow=1 implies that we will follow symlinks
+		# GJ 2006-10-22 - I want to be able to specify a subdir of image
+		# dir and restrict action to that
+		if ($inputFileSpec=~/$imageRoot/){
+			$imageRoot=$inputFileSpec;	
+			print "Setting image root to: ",$imageRoot,"\n";
+		} else {
+			print "image root is: ",$imageRoot,"\n";
+		}
+
+		find({ wanted => \&handleFind, follow => 1 },$imageRoot);
+		print "-"x25,"\nRescanning images directory a second time\n","-"x25,"\n" if($opt{v});
+		find({ wanted => \&handleFind, follow => 1 },$imageRoot);
+		print "\nRan $initialAffineTotal initial affine registrations of which $initialAffineTotalFailed failed\n";	
+		print "Ran $affineTotal affine registrations of which $affineTotalFailed failed\n";	
+		print "Ran $warpTotal warp registrations\n";	
+		print "Reformatted $reformatTotal images\n";
 	} else {
-		print "image root is: ",$imageRoot,"\n";
-	}
-	
-	find({ wanted => \&handleFind, follow => 1 },$imageRoot);
-	print "-"x25,"\nRescanning images directory a second time\n","-"x25,"\n" if($opt{v});
-	find({ wanted => \&handleFind, follow => 1 },$imageRoot);
-	print "\nRan $initialAffineTotal initial affine registrations of which $initialAffineTotalFailed failed\n";	
-	print "Ran $affineTotal affine registrations of which $affineTotalFailed failed\n";	
-	print "Ran $warpTotal warp registrations\n";	
-	print "Reformatted $reformatTotal images\n";
-} else {
-	die usage();
+		die usage();
+	}	
 }
 
 sub findRootDir {
@@ -890,7 +898,7 @@ sub interrupt {
 
 sub usage {
 	print STDOUT << "EOF"; 
-Usage: $0 [OPTIONS] <PICFILE/DIR>
+Usage: $0 [OPTIONS] <PICFILE/DIR> [<PICFILE2/DIR2> ...]
 Version: $version
 
 	-h print this help

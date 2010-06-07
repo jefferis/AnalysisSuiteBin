@@ -28,16 +28,20 @@ use vars qw/ %opt /;  # for command line options - see init()
                       
 init(); # process command line options
 
-if(-d $ARGV[0]){
-	# nb it is necesary to convert the directory specification
-	# to an absolute path to ensure that the open in &readheader
-	# works properly during multi directory traversal
-	my $InDir=File::Spec->rel2abs($ARGV[0]);	
-	find(\&handleFind,$InDir);	
-} elsif (-f $ARGV[0]) {
-	&readheader(File::Spec->rel2abs($ARGV[0])) ;
-} else {
-	die usage();
+die usage() unless scalar(@ARGV);
+
+foreach (@ARGV){
+	if(-d $_){
+		# nb it is necesary to convert the directory specification
+		# to an absolute path to ensure that the open in &readheader
+		# works properly during multi directory traversal
+		my $InDir=File::Spec->rel2abs($_);
+		find(\&handleFind,$InDir);
+	} elsif (-f $_) {
+		&readheader(File::Spec->rel2abs($_));
+	} else {
+		print STDERR "$_ is not a file or directory\n";
+	}
 }
 
 sub init()

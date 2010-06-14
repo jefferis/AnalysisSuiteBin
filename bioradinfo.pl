@@ -28,16 +28,20 @@ use vars qw/ %opt /;  # for command line options - see init()
                       
 init(); # process command line options
 
-if(-d $ARGV[0]){
-	# nb it is necesary to convert the directory specification
-	# to an absolute path to ensure that the open in &readheader
-	# works properly during multi directory traversal
-	my $InDir=File::Spec->rel2abs($ARGV[0]);	
-	find(\&handleFind,$InDir);	
-} elsif (-f $ARGV[0]) {
-	&readheader(File::Spec->rel2abs($ARGV[0])) ;
-} else {
-	die usage();
+die usage() unless scalar(@ARGV);
+
+foreach (@ARGV){
+	if(-d $_){
+		# nb it is necesary to convert the directory specification
+		# to an absolute path to ensure that the open in &readheader
+		# works properly during multi directory traversal
+		my $InDir=File::Spec->rel2abs($_);
+		find(\&handleFind,$InDir);
+	} elsif (-f $_) {
+		&readheader(File::Spec->rel2abs($_));
+	} else {
+		print STDERR "$_ is not a file or directory\n";
+	}
 }
 
 sub init()
@@ -116,21 +120,30 @@ sub readheader{
 		print STDERR "can't read header of $InFile\n" if $opt{v} ; # the header length
 		return;			
 	}
-	
-	if ($opt{l}){
-		print "FILE = ",$InFile,"\n";	
-	} else {
-		print "FILE = ",basename($InFile),"\n";		
-	}
-	
+		
 	# See http://www.perldoc.com/perl5.8.0/pod/func/pack.html for details
 	# of unpack format strings
-	my $HeaderFormat='vvv@14v@64vh4';
+	my $HeaderFormat='vvv@14v@54v@64vh4';
 	# looks like mag isn't really used any more
 	# See http://www.cs.ubc.ca/spider/ladic/text/biorad.txt for details
 	# of biorad header
-	my ($nx, $ny, $npics,$byte_format,$lens,$mag) = unpack($HeaderFormat, $in);
+	my ($nx, $ny, $npics,$byte_format,$magic,$lens,$mag) = unpack($HeaderFormat, $in);
 	# removed LENS = since the information appears more accurately in notes
+	if($magic ne 12345){
+		print "$InFile is not a Biorad PIC file (bad magic)\n" if $opt{v};
+		if($gzFileOpen) {
+			$gz->gzclose;
+		} else {
+			close(PICFILE);
+		}
+		print ".";
+		return;
+	}
+	if ($opt{l}){
+		print "FILE = ",$InFile,"\n";
+	} else {
+		print "FILE = ",basename($InFile),"\n";
+	}
 	print "WIDTH = $nx\nHEIGHT = $ny\nNPICS = $npics\n";
 	print "BITDEPTH = ".($byte_format==0?16:8)."\n";
 	if($opt{s}){
@@ -203,8 +216,7 @@ sub readheader{
 		$notes.="$thisline\n";
 	}
 	if($gzFileOpen) {
-		$gz->gzclose;		
-		
+		$gz->gzclose;
 	} else {
 		close(PICFILE);
 	}

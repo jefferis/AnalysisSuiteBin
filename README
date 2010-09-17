@@ -1,0 +1,7 @@
+This package provides some additional perl/shell scripts that can be used either in conjunction with my neuroanatomy AnalysisSuite or as a standalone.
+
+The most interesting scripts are probably:
+
+  * munger.pl used to control image registration from the command line.  See http://flybrain.mrc-lmb.cam.ac.uk/dokuwiki/doku.php?id=warping_manual:custom_command_lines_for_munger.pl
+  * bioradinfo.pl - information about biorad PIC format files
+  * ailinkedfiles.pl - used to manage linked files in Adobe Illustrator documents

@@ -5,3 +5,8 @@ The most interesting scripts are probably:
   * munger.pl used to control image registration from the command line.  See http://flybrain.mrc-lmb.cam.ac.uk/dokuwiki/doku.php?id=warping_manual:custom_command_lines_for_munger.pl
   * bioradinfo.pl - information about biorad PIC format files
   * ailinkedfiles.pl - used to manage linked files in Adobe Illustrator documents
+
+See also:
+
+	http://flybrain.stanford.edu/utilscripts
+	http://github.com/jefferis/AnalysisSuiteBin

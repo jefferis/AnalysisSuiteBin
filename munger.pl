@@ -340,8 +340,10 @@ sub runWarp {
 	my $outlist=File::Spec->catdir($regRoot,"warp",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_".$warpSuffix.".list");
 	print "W: outlist = $outlist\n" if $opt{v};	
 	
-	my $args="-v --metric $metric --jacobian-weight $jacobian";	
-	$args.=" --threads $threads";
+	my $args="-v --metric $metric --jacobian-weight $jacobian";
+	if ($threads ne "auto"){
+		$ENV{'CMTK_NUM_THREADS'}=$threads;
+	}
 	$args.=" --spline --fast -e $exploration --grid-spacing $gridspacing ";	
 	$args.=" --energy-weight $energyweight --adaptive-fix --refine $refine --coarsest $coarsest";	
 	$args.=" --ic-weight $icweight";
@@ -526,7 +528,9 @@ sub runAffine {
 	my ($filepath,$brain,$channel) = @_;	
 	
 	my $args="-i -v --dofs 6 --dofs 9";
-	$args.=" --threads $threads";
+	if ($threads ne "auto"){
+		$ENV{'CMTK_NUM_THREADS'}=$threads;
+	}
 	# add any extra arguments
 	$args.=" ".$opt{A};	
 	# new version has relative filenames in output dir depending on input hierarchy

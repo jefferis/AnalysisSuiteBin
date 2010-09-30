@@ -34,12 +34,12 @@
 # v1.17 2009-10-27 - Add ability to specify multiple input images / dirs 
 
 require 5.004;
+use strict;
 my $version= 1.17;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
 use File::Spec;
-use strict;
 
 # Autoflush stdout - so that it always keeps up with STDERR
 $|=1;
@@ -157,7 +157,7 @@ my %found;	# hash to store filenames for status function
 
 if ($opt{p}){
 	print "Generating script file $opt{p}" if $opt{v};	
-	open SCRIPT, "> $opt{p}";	
+	open SCRIPT, "> $opt{p}";
 }
 
 chomp($rootDir=`pwd`);
@@ -747,7 +747,7 @@ sub status {
 	my @lockedWarpRegistrations=grep /\/warp\/.*warp[^\/]*\.list\/registration.lock$/i, @paths;	
 
 	# make a hash containing the directory name of all finished warps
-	my %finished = map { dirname($_) => $_ } @finishedWarpRegistrations;
+	%finished = map { dirname($_) => $_ } @finishedWarpRegistrations;
 	# Now go through all registration dirs tossing those that
 	# are in the finished hash
 	my @unfinishedWarpRegistrations = grep { !exists $finished{$_}  } @warpRegistrations;	
@@ -825,10 +825,11 @@ sub dumpcommand {
   my $note = shift @_;
   my $command = shift @_;
   my $filename = shift @_;
-  open (FH, '>' . $filename);
-  print FH "$note\n";
-  print FH "$command\n";
-  close (FH);
+  my $FH;
+  open ($FH, '>' . $filename);
+  print $FH "$note\n";
+  print $FH "$command\n";
+  close ($FH);
 }
 
 sub makelock {
@@ -844,9 +845,10 @@ sub makelock {
 	return 0 if (-f "$lockfile");
 
 	# write our lock message
-	open(FH,">> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
-	print FH "$lockmessage\n";
-	close FH;
+	my $FH;
+	open($FH,">> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
+	print $FH "$lockmessage\n";
+	close $FH;
 	# now read back in ...
 	my $firstLine=getidfromlockfile($lockfile);
 	# and check we wrote the first line (assuming msg is unique to this process)
@@ -864,12 +866,13 @@ sub removelock {
 }
 
 sub getidfromlockfile {
-	my ($file)=@_;	
-	open (FH,"$file") or return "NULL";
-	my $line=<FH>;
+	my ($file)=@_;
+	my $FH;
+	open ($FH,"$file") or return "NULL";
+	my $line=<$FH>;
 	chomp $line;
-	close(FH);
-	return($line);	
+	close($FH);
+	return($line);
 }
 
 sub truncatefile {

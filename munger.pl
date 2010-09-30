@@ -160,11 +160,11 @@ if ($opt{p}){
 	open SCRIPT, "> $opt{p}";	
 }
 
-chomp(my $rootDir=`pwd`);
+chomp($rootDir=`pwd`);
 print "Root directory is $rootDir\n";
 
-my $nargs=$#ARGV;
-die usage() if($nargs==0);
+my $nargs=$#ARGV+1;
+die usage() if($nargs<1);
 print "There are $nargs arguments\n" if $nargs>1;
 
 # process multiple arguments

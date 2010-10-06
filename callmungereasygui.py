@@ -2,6 +2,17 @@
 
 # This script provides a very simple cross-platform GUI for the munger.pl
 # script which coordinates registration and reformatting of images using CMTK
+# it should run on pretty much any OS including linux/mac/windows
+
+# The prerequisites are:
+#   python >= 2.5 
+#   easygui.py >= 0.95
+
+# easygui can be downloaded from
+# http://easygui.sourceforge.net/
+# and installation should be as simple as 
+# cd easy_gui        # or whatever the download dir is called
+# setup.py install   # you may need sudo setup.py install if root permissions are required
 
 import os, sys, time
 import easygui
@@ -58,7 +69,6 @@ def findExecutable(execname,msg=''):
 
 scriptPath = os.path.join(sys.path[0], sys.argv[0])
 print scriptPath
-easygui.textbox(msg='scriptPath = %s' % (scriptPath), title=' ', text='', codebox=0)
 
 # 0.1) Identify path to CMTK binaries
 # see if warp is in path

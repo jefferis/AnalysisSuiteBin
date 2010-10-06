@@ -44,7 +44,7 @@ def makescript(cmd,rootdir,outdir):
     double clicked on MacOS X
     '''
     if not os.path.exists: os.mkdir(outdir)
-    mtime = time.strftime('"%Y-%m-%d_%H.%M.%S"')
+    mtime = time.strftime('%Y-%m-%d_%H.%M.%S')
     filename= "munger_%s.command" %(mtime)
     filepath=os.path.join(outdir,filename)
     f = open(filepath, 'w')
@@ -105,7 +105,7 @@ action=easygui.buttonbox(msg='Choose an action', choices=('Test', 'Run', 'Write 
 if action == 'Cancel': sys.exit('script cancelled!')
 if action == 'Test': mungeropts+=' -t'
 # build munger command line
-cmd='"%s" -b "%s" %s -s "%s" "%s"' % (munger,bindir, mungeropts,refBrain,image)
+cmd='"%s" -b "%s" %s -s "%s" .' % (munger,bindir, mungeropts,refBrain)
 print cmd
 # always make a script
 script=makescript(cmd,rootDir,outdir=os.path.join(rootDir,'commands'))

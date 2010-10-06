@@ -59,9 +59,13 @@ def findExecutable(execname,msg=''):
     execpath=subprocess.Popen(["which", execname], stdout=subprocess.PIPE).communicate()[0].rstrip()
     if execpath == '' :
         if msg == '' :
-            msg="Locate the program "+execname
-        newpath = easygui.fileopenbox(msg=msg)
-        return newpath
+            msg="Locate the directory containing program "+execname
+        execdir = easygui.diropenbox(msg=msg)
+        execpath = os.path.join(execdir,execname)
+        if os.path.exists(execpath) :
+            return execpath
+        else :
+            sys.exit('Unable to locate '+execname+' in directory '+execdir)
     else : return execpath
 
 # # the script !

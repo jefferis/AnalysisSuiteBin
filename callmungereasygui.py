@@ -5,7 +5,7 @@
 
 import os, sys, time
 import easygui
-from subprocess import *
+import subprocess
 
 # Function definitions
 # --------------------
@@ -45,7 +45,7 @@ def findExecutable(execname,msg=''):
     '''
     @return full path to a command using the shell's which function
     '''
-    execpath=Popen(["which", execname], stdout=PIPE).communicate()[0].rstrip()
+    execpath=subprocess.Popen(["which", execname], stdout=subprocess.PIPE).communicate()[0].rstrip()
     if execpath == '' :
         if msg == '' :
             msg="Locate the program "+execname
@@ -102,6 +102,6 @@ script=makescript(cmd,rootDir,outdir=os.path.join(rootDir,'commands'))
 
 if action != 'Write script':
     # Actually run the script    
-    call(script,shell=True)
+    subprocess.call(script,shell=True)
 
 print ("Successfully completed!")

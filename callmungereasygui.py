@@ -75,8 +75,6 @@ scriptPath = os.path.join(sys.path[0], sys.argv[0])
 print scriptPath
 
 # 0.1) Identify path to CMTK binaries
-# see if warp is in path
-findExecutable('warp')
 bindir=os.path.dirname(findExecutable('warp'))
 
 # 0.1) Identify path to munger.pl script

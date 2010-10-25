@@ -52,15 +52,24 @@ $SIG{'QUIT'} = 'interrupt';
 init(); # process command line options
 my $energyweight=$opt{E}?$opt{E}:"1e-1";
 my $exploration=$opt{X}?$opt{X}:"16";
-my $metric=$opt{M}?$opt{M}:"0"; # 0=NMI, 1= MI
+my $metric=$opt{M}?$opt{M}:"nmi"; # 0=NMI, 1= MI
 my $coarsest=$opt{C}?$opt{C}:"4";
 my $gridspacing=$opt{G}?$opt{G}:"40";
 my $refine=$opt{R}?$opt{R}:"3";
 my $jacobian=$opt{J}?$opt{J}:"0";
 my $outputType=$opt{o}?$opt{o}:"nrrd";
 
-# this will be used to name the warp output files
-my $warpSuffix="warp_m".$metric."g".$gridspacing."c".$coarsest."e".$energyweight."x".$exploration."r".$refine;
+# find the index of the metric among (currently) 5 options
+sub arrayidx {
+	1 while $_[0] ne pop;
+	@_-1;
+}
+my @metricOptions = ("nmi", "mi", "cr", "msd", "ncc");
+my $metricIndex = arrayidx($metric,@metricOptions);
+die "Unrecognised metric $metric" unless ($metricIndex > -1);
+# find the warp suffix that will be used to name the warp output files
+my $warpSuffix="warp_m".$metricIndex."g".$gridspacing."c".$coarsest."e".$energyweight."x".$exploration."r".$refine;
+
 my $icweight=$opt{I}?$opt{I}:"0";
 
 # STORE CURRENT HOSTNAME
@@ -341,12 +350,12 @@ sub runWarp {
 	my $outlist=File::Spec->catdir($regRoot,"warp",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_".$warpSuffix.".list");
 	print "W: outlist = $outlist\n" if $opt{v};
 
-	my $args="-v --metric $metric --jacobian-weight $jacobian";
+	my $args="-v --registration-metric $metric --jacobian-weight $jacobian";
 	if ($threads ne "auto"){
 		$ENV{'CMTK_NUM_THREADS'}=$threads;
 	}
-	$args.=" --spline --fast -e $exploration --grid-spacing $gridspacing ";
-	$args.=" --energy-weight $energyweight --adaptive-fix --refine $refine --coarsest $coarsest";
+	$args.=" --fast -e $exploration --grid-spacing $gridspacing ";
+	$args.=" --energy-weight $energyweight --refine $refine --coarsest $coarsest";
 	$args.=" --ic-weight $icweight";
 	$args.=" --output-intermediate" unless $opt{0};
 	# add any extra arguments
@@ -952,7 +961,8 @@ Version: $version
 	-I inverse consistent warp weight (--ic-weight) default 0, try 1e-5
 	-E [energy] energy of warp transform (default e-1)
 	-X [exploration] (default 16)
-	-M [metric] (default 0 (NMI), options 1=MI)
+	-M [metric] (Supported values: nmi, mi, cr, msd, ncc, default is nmi)
+       See warp --help for details
 	-C [coarsest] (default 4)
 	-G [grid-spacing] (default 40)
 	-R [refine] (default 3)

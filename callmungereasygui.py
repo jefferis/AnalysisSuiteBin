@@ -43,7 +43,7 @@ def makescript(cmd,rootdir,outdir):
     Because the file is executable and ends in .command it can be 
     double clicked on MacOS X
     '''
-    if not os.path.exists: os.mkdir(outdir)
+    if not os.path.exists(outdir): os.mkdir(outdir)
     mtime = time.strftime('%Y-%m-%d_%H.%M.%S')
     filename= "munger_%s.command" %(mtime)
     filepath=os.path.join(outdir,filename)
@@ -76,6 +76,7 @@ print scriptPath
 
 # 0.1) Identify path to CMTK binaries
 bindir=os.path.dirname(findExecutable('warp'))
+print 'bindir is ' + bindir
 
 # 0.1) Identify path to munger.pl script
 munger=findExecutable('munger.pl')

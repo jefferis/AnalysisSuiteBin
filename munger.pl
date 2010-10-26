@@ -219,7 +219,7 @@ foreach my $inputFileSpec (@ARGV){
 		print "Ran $warpTotal warp registrations\n";	
 		print "Reformatted $reformatTotal images\n";
 	} else {
-		die usage();
+		print STDERR "inputFileSpec: $inputFileSpec does not match any file/directory\n";
 	}	
 }
 

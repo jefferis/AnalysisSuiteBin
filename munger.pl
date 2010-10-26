@@ -34,12 +34,12 @@
 # v1.17 2009-10-27 - Add ability to specify multiple input images / dirs 
 
 require 5.004;
+use strict;
 my $version= 1.17;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
 use File::Spec;
-use strict;
 
 # Autoflush stdout - so that it always keeps up with STDERR
 $|=1;
@@ -52,15 +52,24 @@ $SIG{'QUIT'} = 'interrupt';
 init(); # process command line options
 my $energyweight=$opt{E}?$opt{E}:"1e-1";
 my $exploration=$opt{X}?$opt{X}:"16";
-my $metric=$opt{M}?$opt{M}:"0"; # 0=NMI, 1= MI
+my $metric=$opt{M}?$opt{M}:"nmi"; # 0=NMI, 1= MI
 my $coarsest=$opt{C}?$opt{C}:"4";
 my $gridspacing=$opt{G}?$opt{G}:"40";
 my $refine=$opt{R}?$opt{R}:"3";
 my $jacobian=$opt{J}?$opt{J}:"0";
 my $outputType=$opt{o}?$opt{o}:"nrrd";
 
-# this will be used to name the warp output files
-my $warpSuffix="warp_m".$metric."g".$gridspacing."c".$coarsest."e".$energyweight."x".$exploration."r".$refine;
+# find the index of the metric among (currently) 5 options
+sub arrayidx {
+	1 while $_[0] ne pop;
+	@_-1;
+}
+my @metricOptions = ("nmi", "mi", "cr", "msd", "ncc");
+my $metricIndex = arrayidx($metric,@metricOptions);
+die "Unrecognised metric $metric" unless ($metricIndex > -1);
+# find the warp suffix that will be used to name the warp output files
+my $warpSuffix="warp_m".$metricIndex."g".$gridspacing."c".$coarsest."e".$energyweight."x".$exploration."r".$refine;
+
 my $icweight=$opt{I}?$opt{I}:"0";
 
 # STORE CURRENT HOSTNAME
@@ -153,18 +162,18 @@ $maxtime=$maxtime*3600; # convert to seconds
 my $starttime=time(); # record our starting time (in seconds)
 print STDERR "Start time is: $starttime seconds\n" if $opt{v};
 
-my %found;	# hash to store filenames for status function
+my %found; # hash to store filenames for status function
 
 if ($opt{p}){
-	print "Generating script file $opt{p}" if $opt{v};	
-	open SCRIPT, "> $opt{p}";	
+	print "Generating script file $opt{p}" if $opt{v};
+	die "Unable to open script file $opt{p} for writing" unless open SCRIPT, "> $opt{p}";
 }
 
-chomp(my $rootDir=`pwd`);
+chomp($rootDir=`pwd`);
 print "Root directory is $rootDir\n";
 
-my $nargs=$#ARGV;
-die usage() if($nargs==0);
+my $nargs=$#ARGV+1;
+die usage() if($nargs<1);
 print "There are $nargs arguments\n" if $nargs>1;
 
 # process multiple arguments
@@ -177,7 +186,7 @@ foreach my $inputFileSpec (@ARGV){
 
 	if(-f $inputFileSpec || $inputFileSpec=~m/\.study/ ) {
 		# find the root dir even if we specifed images dir or subdir
-		# $rootDir=findRootDir($inputFileSpec);	
+		# $rootDir=findRootDir($inputFileSpec);
 
 		# 2005-10-18 Actually would rather just use current as root dir
 		# that isn't too much of a hardship and if the image 
@@ -190,8 +199,8 @@ foreach my $inputFileSpec (@ARGV){
 	} elsif(-d $inputFileSpec){
 		# find the root dir even if we specifed images dir or subdir
 		$rootDir=findRootDir($inputFileSpec);
-		print "Changing to root directory: $rootDir\n";	
-		chdir($rootDir);	
+		print "Changing to root directory: $rootDir\n";
+		chdir($rootDir);
 
 		if($opt{u}){
 			status();
@@ -205,7 +214,7 @@ foreach my $inputFileSpec (@ARGV){
 		# GJ 2006-10-22 - I want to be able to specify a subdir of image
 		# dir and restrict action to that
 		if ($inputFileSpec=~/$imageRoot/){
-			$imageRoot=$inputFileSpec;	
+			$imageRoot=$inputFileSpec;
 			print "Setting image root to: ",$imageRoot,"\n";
 		} else {
 			print "image root is: ",$imageRoot,"\n";
@@ -214,9 +223,9 @@ foreach my $inputFileSpec (@ARGV){
 		find({ wanted => \&handleFind, follow => 1 },$imageRoot);
 		print "-"x25,"\nRescanning images directory a second time\n","-"x25,"\n" if($opt{v});
 		find({ wanted => \&handleFind, follow => 1 },$imageRoot);
-		print "\nRan $initialAffineTotal initial affine registrations of which $initialAffineTotalFailed failed\n";	
-		print "Ran $affineTotal affine registrations of which $affineTotalFailed failed\n";	
-		print "Ran $warpTotal warp registrations\n";	
+		print "\nRan $initialAffineTotal initial affine registrations of which $initialAffineTotalFailed failed\n";
+		print "Ran $affineTotal affine registrations of which $affineTotalFailed failed\n";
+		print "Ran $warpTotal warp registrations\n";
 		print "Reformatted $reformatTotal images\n";
 	} else {
 		print STDERR "inputFileSpec: $inputFileSpec does not match any file/directory\n";
@@ -227,7 +236,7 @@ sub findRootDir {
 	# returns the root directory for a working tree
 	# by looking for the dir which has an images subdirectory
 	# or returning the original path if no luck
-	my $fullpath=shift;	
+	my $fullpath=shift;
 
 	# nb it is necesary to convert the directory specification
 	# to an absolute path to ensure that the open in &readheader
@@ -250,26 +259,26 @@ sub findRootDir {
 		last if (-d File::Spec->catdir($partialpath,"images"));
 	}
 	# if we have a valid partial path, return that, else return what we were given
-	return ($partialpath eq File::Spec->rootdir()?$fullpath:$partialpath);	
+	return ($partialpath eq File::Spec->rootdir()?$fullpath:$partialpath);
 }
 
 sub findRelPathToImgDir {
 	# returns the relative path of an image filepath to the images directory
 	# this just involves removing the first and last elements
 	# if we assume that input paths are relative to root dir
-	my $filepath=shift;	
-	
+	my $filepath=shift;
+
 	# the quick way, but not all systems have File::Spec->abs2rel
-	# my($volume,$directories,$file)= File::Spec->splitpath(File::Spec->abs2rel($filepath,$imageRoot));	
+	# my($volume,$directories,$file)= File::Spec->splitpath(File::Spec->abs2rel($filepath,$imageRoot));
 
 	my ($volume,$directories,$file) = File::Spec->splitpath( $filepath );
-	my @dirs = File::Spec->splitdir($directories);	
+	my @dirs = File::Spec->splitdir($directories);
 	# check this works if @dirs has one element
 	# not clever, just removes the first and last element
 	@dirs=@dirs[1..($#dirs-1)];
 	my $dirs=File::Spec->catdir(@dirs);
-#	print STDERR "$dirs\n";	
-	return ($dirs);	
+#	print STDERR "$dirs\n";
+	return ($dirs);
 }
  
 
@@ -283,27 +292,27 @@ sub munge {
 	my $filepath=shift;
 
 	die "Quitting after receiving QUIT signal" if $quitNextImage;
-	
-	my $filename=basename($filepath);		
+
+	my $filename=basename($filepath);
 	# get the brain name
-	my $brain=$filename;	
-	$brain=~s/(_raw)?(0\d)?\.(pic(\.gz){0,1}|n(rrd|hdr))//i;	
+	my $brain=$filename;
+	$brain=~s/(_raw)?(0\d)?\.(pic(\.gz){0,1}|n(rrd|hdr))//i;
 	# the channel of the image
 	my $channel=($filename=~/(0\d)\.(pic(\.gz){0,1}|n(rrd|hdr))/i)?$1:"";
-	
+
 	print  "Found brain name $brain $channel ($filepath)\n" if $opt{v};
-	
+
 	# change the working dir to the root dir 
 	# (rather than wherever we are in the image dir hierarchy)
 	use Cwd;
 	my $old_directory = cwd;
 	chdir($rootDir) or die "Can't change directory: $!";
-	print "New working directory is: $rootDir, Old one was $old_directory \n" if $opt{v};	
-	
+	print "New working directory is: $rootDir, Old one was $old_directory \n" if $opt{v};
+
 	# nb by using local we only affect downstream stuff
 		 
 	if (!$opt{i} && $filename eq basename($referenceImage)){
-		print STDERR "Bailing out because target: ",$filename," and ref: ",$referenceImage," are the same\n" if $opt{v};	
+		print STDERR "Bailing out because target: ",$filename," and ref: ",$referenceImage," are the same\n" if $opt{v};
 		return 0;
 	}
 	# run registrations if this file is of the correct channel
@@ -317,41 +326,44 @@ sub munge {
 			# only run registrations if we haven't run too many already
 			runAffine( $filepath,$brain,$channel) if $opt{a};
 			# run the warp transformation
-			runWarp($filepath,$brain,$channel) if $opt{w};			
+			runWarp($filepath,$brain,$channel) if $opt{w};
 		} else {
 			print STDERR "Skipping registrations because maxtime exceeded\n" if $opt{v};
 		}
 	}
 	if ($channel eq "" || $reformatChannels=~/$channel/) {
 		foreach (split(//,$reformatLevels)){
-			runReformat( $filepath,$brain,$channel,$_) if $opt{r};	
+			runReformat( $filepath,$brain,$channel,$_) if $opt{r};
 		}
 	}
 	# unset the dir change
 	chdir($old_directory) or die "Can't change directory: $!";
+	return;
 }
 
 sub runWarp {
-	my ($filepath,$brain,$channel) = @_;	
+	my ($filepath,$brain,$channel) = @_;
 	my $inlist=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_9dof.list");
-	print "inlist = $inlist\n" if $opt{v};	
-	
+	print "inlist = $inlist\n" if $opt{v};
+
 	# new version has relative filenames in output dir depending on input hierarchy
 	my $outlist=File::Spec->catdir($regRoot,"warp",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_".$warpSuffix.".list");
-	print "W: outlist = $outlist\n" if $opt{v};	
-	
-	my $args="-v --metric $metric --jacobian-weight $jacobian";	
-	$args.=" --threads $threads";
-	$args.=" --spline --fast -e $exploration --grid-spacing $gridspacing ";	
-	$args.=" --energy-weight $energyweight --adaptive-fix --refine $refine --coarsest $coarsest";	
+	print "W: outlist = $outlist\n" if $opt{v};
+
+	my $args="-v --registration-metric $metric --jacobian-weight $jacobian";
+	if ($threads ne "auto"){
+		$ENV{'CMTK_NUM_THREADS'}=$threads;
+	}
+	$args.=" --fast -e $exploration --grid-spacing $gridspacing ";
+	$args.=" --energy-weight $energyweight --refine $refine --coarsest $coarsest";
 	$args.=" --ic-weight $icweight";
-	$args.=" --output-intermediate" unless $opt{0};	
+	$args.=" --output-intermediate" unless $opt{0};
 	# add any extra arguments
-	$args.=" ".$opt{W};	
-	
+	$args.=" ".$opt{W};
+
 	# bail out if infile doesn't exist (or is empty)
-	return 0 unless (-s "$inlist/registration.gz") || (-s "$inlist/registration") ;	
-	
+	return 0 unless (-s "$inlist/registration.gz") || (-s "$inlist/registration") ;
+
 	my $outfile;
 	my $finalRegLevel=$opt{R}+1;
 	if($opt{0}){
@@ -362,7 +374,7 @@ sub runWarp {
 		# to the one that is then saved in the root directory (if all went well)
 		# this will avoid an incomplete terminated registration which does 
 		# generate a registration file in the root dir from blocking reregistration
-		$outfile = File::Spec->catfile($outlist,"level-0${finalRegLevel}.list","registration");		
+		$outfile = File::Spec->catfile($outlist,"level-0${finalRegLevel}.list","registration");
 	}
 	# Continue if outdir doesn't exist OR
 	# if age of indir > age of outdir & there is a registration
@@ -374,19 +386,19 @@ sub runWarp {
 		$outfile="${outfile}.gz" if(-f "${outfile}.gz"); # check for a zipped one
 		if ( (-s $outfile) && # there is a non-zero registration file already
 			(-M $outfile < -M "$inlist/registration") ) { # and it's newer than the input affine reg
-			return 0; # then bail out			
+			return 0; # then bail out
 		}
 	}
 
 	# try to make a lockfile (and bail if we can't because someone else already has)
-	return 0 unless makelock("$outlist/registration.lock");	
-	
+	return 0 unless makelock("$outlist/registration.lock");
+
 	my @cmd=( $warpCommand, split(/\s+/,$args), "-o", $outlist, $inlist );
 	my $cmd_string=join( ' ', @cmd );
 	if($opt{v}){
 	    print  "W: Running warp reg with command: $cmd_string\n";
 	} else {
-	    print "Warp $brain,";		
+	    print "Warp $brain,";
 	}
 	    
 	if (!$opt{t}){
@@ -399,11 +411,11 @@ sub runWarp {
 		# so try this:
 		# nb opt z indicates that we don't want to gzip; nb -f to over-write
 		myexec( "find", $outlist, "-name", "registration", "-exec", "gzip", "-f", "-9", "{}", ";" ) unless $opt{z};
-		
+
 		removelock("$outlist/registration.lock");
 		return $outlist;
 	} else {
-		return 0;		
+		return 0;
 	}
 }
 
@@ -412,7 +424,7 @@ sub runReformat {
 	# nb note that the input registration may not be in the same channel as the image to be reformatted
 	# therefore use $referenceImageChannel to specify the channel of the input registration
 	# (not $channel of current image)
-	
+
 	my ($baseinlist,$inlist);
 	if($level eq "p"){
 		# reformat from principal axis
@@ -427,24 +439,24 @@ sub runReformat {
 		$inlist=$baseinlist;
 		if($level ne "f"){
 			# registration will be in a subdir in this case
-			$inlist.="/level-0".$level.".list";	
+			$inlist.="/level-0".$level.".list";
 		}
 	} else {
 			print STDERR "Unrecognised reformat level specifier: $level\n";
 			return 0;
-	}	
-	
-	print "Reformat:inlist would be: $inlist\n" if $opt{v};		
+	}
+
+	print "Reformat:inlist would be: $inlist\n" if $opt{v};
 	# bail out if input registration itself doesn't exist
 	return 0 if (! -s "$inlist/registration"  && ! -s "$inlist/registration.gz");
 	print "inlist exists\n" if $opt{v};
-	
+
 	# Construct the outlist - basename gets the name of the file from full path
 	my $outlist=basename($baseinlist);  #eg averagegoodbrain_brainame_warp40-5_e1e-1_c4.list
 	# Remove everything up to warp or 9dof
-	$outlist=~s/^.*_((warp|9dof|pa)[^.]*)\.list$/$1/i;
+	$outlist=~s/^.*_((warp|9dof|pa)^.*?)\.list$/$1/i;
 	# nb registration channel may be different from channel of current image
-	# which is what we want here		
+	# which is what we want here
 	if( $level=~m/[0-9]/ ){
 		# specific warp level ... registration will be in a subdir in this case
 		$outlist=$referenceStem."_".$brain.$channel."_".$outlist."_lev".$level;
@@ -453,8 +465,8 @@ sub runReformat {
 		$outlist=$referenceStem."_".$brain.$channel."_".$outlist;
 	}
 
-	$outlist=File::Spec->catdir($reformatRoot,&findRelPathToImgDir($inputimgfilepath),$outlist);	
-	
+	$outlist=File::Spec->catdir($reformatRoot,&findRelPathToImgDir($inputimgfilepath),$outlist);
+
 	# Set things up for different image ouput types
 	my ($outfile,$makedir,$outputSpec)=('',1,''); 
 	if($outputType eq "nrrd" || $outputType eq "nhdr"){
@@ -465,12 +477,12 @@ sub runReformat {
 		$outputSpec="RAW3D:";
 	}
 
-	my $testoutfile=$outfile;	
-	
+	my $testoutfile=$outfile;
+
 	print "outlist is: $outlist\n" if $opt{v};
 
 	# nb -M gives time since last modification of file
-	# it's in days but it's a float with lots of digits	
+	# it's in days but it's a float with lots of digits
 	# Bail out if we have already reformatted 
 	if ( ! -d $outlist && $makedir){
 		# no output dir, so make one and continue
@@ -479,7 +491,7 @@ sub runReformat {
 		print "outdir exists\n" if $opt{v} && $makedir;
 		# there is an output dir ... is there an image file?
 		# check for a zipped one
-		$testoutfile="${outfile}.gz" if(-f "${outfile}.gz");		
+		$testoutfile="${outfile}.gz" if(-f "${outfile}.gz");
 		if ( (-f $testoutfile) && # there is an image file already
 			(-M $testoutfile < -M $inlist) && # and it's newer than the input reg
 			(-M $testoutfile < -M $inputimgfilepath) ) { # and newer than input img
@@ -491,10 +503,10 @@ sub runReformat {
 	# don't want to do any reformatting - we are just a separate 
 	# job that has been started to clear some space, so bail now!
 	return 0 if($deleteInputImage =~ /^any/);
-	
+
 	# try to make a lockfile (and bail if we can't because someone else already has)
-	return 0 unless makelock("${outlist}.lock");	
-	
+	return 0 unless makelock("${outlist}.lock");
+
 	# make command 
 	my @args=("-v","--pad-out","0");	# makes null pixels black instead of white
 	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile},
@@ -505,7 +517,7 @@ sub runReformat {
 		print  "Running reformat with command: $cmd_string\n";
 	} else {
 		# print full name of the file being reformatted
-		print "Reformat ".basename($inputimgfilepath).",";		
+		print "Reformat ".basename($inputimgfilepath).",";
 	}
 	if(!$opt{t}){
 		print myexec(@cmd);
@@ -523,18 +535,20 @@ sub runReformat {
 }
 
 sub runAffine {
-	my ($filepath,$brain,$channel) = @_;	
-	
+	my ($filepath,$brain,$channel) = @_;
+
 	my $args="-i -v --dofs 6 --dofs 9";
-	$args.=" --threads $threads";
+	if ($threads ne "auto"){
+		$ENV{'CMTK_NUM_THREADS'}=$threads;
+	}
 	# add any extra arguments
-	$args.=" ".$opt{A};	
+	$args.=" ".$opt{A};
 	# new version has relative filenames in output dir depending on input hierarchy
-	
+
 	my $listroot=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel);
 	my $outlist=$listroot."_9dof.list";
 	my $inputfile = $filepath;
-	$inputfile = File::Spec->catdir($listroot."_pa.list","registration") if $opt{P} || $opt{L};	
+	$inputfile = File::Spec->catdir($listroot."_pa.list","registration") if $opt{P} || $opt{L};
 
 	# Continue if an output file doesn't exist or
 	# -s means file exists and has non zero size
@@ -542,15 +556,15 @@ sub runAffine {
 		# no output file, so just continue
 	} elsif ( -M "$inputfile" > -M File::Spec->catfile($outlist,"registration") ) {
 		# ok age of indir > age of outdir so no need to rerun
-		return 0;		
+		return 0;
 	}
-	
+
 	# bail out if somebody else is working on this
 	return 0 unless makelock("$outlist/registration.lock");
 
 	my @cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $referenceImage, $inputfile );
 	@cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $listroot."_pa.list" ) if $opt{P} || $opt{L};
-	
+
 	my $cmd_string = join( ' ', @cmd );
 	if( $opt{v}){
 		print  "A: Running affine reg with command: $cmd_string\n";
@@ -562,16 +576,16 @@ sub runAffine {
 		# keep a copy of the commandline
 		dumpcommand( "Command was:", join("\0",@cmd), "$outlist/cmd.sh" ) unless $opt{t};
 		# run the command
-		#print "Actually running cmd\n";		
-		#print `$cmd`;	
+		#print "Actually running cmd\n";
+		#print `$cmd`;
 		my $rval=myexec (@cmd);
 		$affineTotalFailed++ unless ($rval==0);
-		#print "Actually finished cmd\n";		
+		#print "Actually finished cmd\n";
 		removelock("$outlist/registration.lock");
 		$affineTotal++;
-		return $outlist;			
+		return $outlist;
 	} else {
-		return 0;			
+		return 0;
 	}
 }
 sub getLandmarksFile {
@@ -599,7 +613,7 @@ sub getLandmarksFile {
 
 sub runLandmarksAffine {
 	my ($filepath,$brain,$channel) = @_;
-	
+
 	my @args=("--affine","--reference-image",$referenceImage,"--floating-image",$filepath);
 	my $sampleLandmarks = getLandmarksFile($filepath);
 	my $refLandmarks = getLandmarksFile($referenceImage);
@@ -613,25 +627,25 @@ sub runLandmarksAffine {
 		return 0;
 	} 
 	print "AlignLandmarks: sample = $sampleLandmarks; ref = $refLandmarks\n" if $opt{v};
-	
+
 	my $outlist=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel."_pa.list");
 	my $outfile=File::Spec->catfile($outlist,"registration");
 	if( ! -s $outfile ){
 		# no output file, so just continue
 	} elsif ( -M $sampleLandmarks > -M $outfile &&  -M $refLandmarks > -M $outfile ) {
 		# ok age of input & ref landmarks > age of registration file so no need to rerun
-		return 0;		
+		return 0;
 	}
 	# bail out if somebody else is working on this
 	# try to make a lockfile (and bail if we can't because someone else already has)
 	return 0 unless makelock("$outlist/registration.lock");
-	
+
 	if($opt{v}){
 		print "$referenceImage exists ", (-e $referenceImage)," writeable ", (-w $referenceImage),"\n";
 		print "$filepath exists ", (-e $filepath)," writeable ", (-w $filepath),"\n";
-		print "$sampleLandmarks exists ", (-e $sampleLandmarks)," writeable ", (-w $sampleLandmarks),"\n";		
-		print "$refLandmarks exists ", (-e $refLandmarks)," writeable ", (-w $refLandmarks),"\n";		
-		print "$outlist exists ", (-e $outlist)," writeable ", (-w $outlist),"\n";		
+		print "$sampleLandmarks exists ", (-e $sampleLandmarks)," writeable ", (-w $sampleLandmarks),"\n";
+		print "$refLandmarks exists ", (-e $refLandmarks)," writeable ", (-w $refLandmarks),"\n";
+		print "$outlist exists ", (-e $outlist)," writeable ", (-w $outlist),"\n";
 	}
 
 	my @cmd=( $landmarksAffCommand, @args, $refLandmarks, $sampleLandmarks, $outlist );
@@ -647,21 +661,21 @@ sub runLandmarksAffine {
 		# keep a copy of the commandline
 		dumpcommand( "Command was:", join("\0",@cmd), "$outlist/cmd.sh" ) unless $opt{t};
 		# run the command
-		#print "Actually running cmd\n";		
-		#print `$cmd`;	
+		#print "Actually running cmd\n";
+		#print `$cmd`;
 		my $rval=myexec (@cmd);
 		$initialAffineTotalFailed++ unless ($rval==0);
-		#print "Actually finished cmd\n";		
+		#print "Actually finished cmd\n";
 		removelock("$outlist/registration.lock");
 		$initialAffineTotal++;
-		return $outlist;			
+		return $outlist;
 	} else {
-		return 0;			
-	}	
+		return 0;
+	}
 }
 sub runInitialAffine {
-	my ($filepath,$brain,$channel) = @_;	
-	
+	my ($filepath,$brain,$channel) = @_;
+
 	my $args="-v --principal-axes";
 	# add any extra arguments
 
@@ -674,11 +688,11 @@ sub runInitialAffine {
 		# no output file, so just continue
 	} elsif ( -M "$filepath" > -M $outfile ) {
 		# ok age of input image > age of registration file so no need to rerun
-		return 0;		
+		return 0;
 	}
-	
+
 	# try to make a lockfile (and bail if we can't because someone else already has)
-	return 0 unless makelock("$outlist/registration.lock");	
+	return 0 unless makelock("$outlist/registration.lock");
 
 	my @cmd=( $initialAffCommand, split(/\s+/,$args), $referenceImage, $filepath, $outfile );
 	my $cmd_string = join( ' ', @cmd );
@@ -692,66 +706,66 @@ sub runInitialAffine {
 		# keep a copy of the commandline
 		dumpcommand( "Command was:", join("\0",@cmd), "$outlist/cmd.sh" ) unless $opt{t};
 		# run the command
-		#print "Actually running cmd\n";		
-		#print `$cmd`;	
+		#print "Actually running cmd\n";
+		#print `$cmd`;
 		my $rval=myexec (@cmd);
 		$affineTotalFailed++ unless ($rval==0);
-		#print "Actually finished cmd\n";		
+		#print "Actually finished cmd\n";
 		removelock("$outlist/registration.lock");
 		$affineTotal++;
-		return $outlist;			
+		return $outlist;
 	} else {
-		return 0;			
+		return 0;
 	}
 }
 
-	
+
 sub status {
 	# Displays number of images
 	# affine registrations, warp registations, and reformatted
 	# images (separated into the two channels)
 
 	# nb follow=1 implies that we will follow symlinks
-	print "Searching directory tree ..." if $opt{v};	
-	find({ wanted => \&findAllFiles, follow => 1 },$rootDir);	
-	print " Finished!\n" if $opt{v};	
+	print "Searching directory tree ..." if $opt{v};
+	find({ wanted => \&findAllFiles, follow => 1 },$rootDir);
+	print " Finished!\n" if $opt{v};
 
-	
+
 	my @paths=keys %found;
 	my @filenames=values %found;
 	my @images=grep /\.(pic(\.gz){0,1}|n(rrd|hdr))$/i, @paths;
 	my @channel1images=grep /01\.(pic(\.gz){0,1}|n(rrd|hdr))/i, @images;
 	my @channel2images=grep /02\.(pic(\.gz){0,1}|n(rrd|hdr))/i, @images;
   
-	print "Total Images: ".scalar(@images)."\n";	
-	print "Channel 1 images: ".scalar(@channel1images)."\n";	
+	print "Total Images: ".scalar(@images)."\n";
+	print "Channel 1 images: ".scalar(@channel1images)."\n";
 	print "Channel 2 images: ".scalar(@channel2images)."\n";
   
-	my @affineRegistrations=grep /affine.*9dof\.list$/i, @paths;	
+	my @affineRegistrations=grep /affine.*9dof\.list$/i, @paths;
 	my @lockedAffineRegistrations=grep /affine.*registration.lock$/i, @paths;
-	my @lockedAffineIDs=map {&getidfromlockfile($_)} @lockedAffineRegistrations;	
-	
-	my @finishedAffineRegistrations=grep /affine.*9dof\.list\/registration$/i, @paths;	
+	my @lockedAffineIDs=map {&getidfromlockfile($_)} @lockedAffineRegistrations;
+
+	my @finishedAffineRegistrations=grep /affine.*9dof\.list\/registration$/i, @paths;
 	# make a hash containing the directory name of all finished affines
 	my %finished = map { dirname($_) => $_ } @finishedAffineRegistrations;
 	# Now go through the array of all registration dirs tossing those that
 	# are in the finished hash
-	my @unfinishedAffineRegistrations = grep { !exists $finished{$_}  } @affineRegistrations;	
-	
+	my @unfinishedAffineRegistrations = grep { !exists $finished{$_}  } @affineRegistrations;
+
 	my @warpRegistrations=grep /\/warp\/.*warp[^\/]*\.list$/, @paths;
 	my @finishedWarpRegistrations=grep /\/warp\/.*warp[^\/]*\.list\/registration(.gz)$/, @paths;
-	my @lockedWarpRegistrations=grep /\/warp\/.*warp[^\/]*\.list\/registration.lock$/i, @paths;	
+	my @lockedWarpRegistrations=grep /\/warp\/.*warp[^\/]*\.list\/registration.lock$/i, @paths;
 
 	# make a hash containing the directory name of all finished warps
-	my %finished = map { dirname($_) => $_ } @finishedWarpRegistrations;
+	%finished = map { dirname($_) => $_ } @finishedWarpRegistrations;
 	# Now go through all registration dirs tossing those that
 	# are in the finished hash
-	my @unfinishedWarpRegistrations = grep { !exists $finished{$_}  } @warpRegistrations;	
-	
+	my @unfinishedWarpRegistrations = grep { !exists $finished{$_}  } @warpRegistrations;
+
 	my @reformattedImages=`find $rootDir/$reformatRoot/ -type d -name \'*.study\'`;
-	@channel1images=grep /^[^_]+01_/i, @reformattedImages;	
+	@channel1images=grep /^[^_]+01_/i, @reformattedImages;
 	@channel2images=grep /^[^_]+02_/i, @reformattedImages;
-	
+
 	print "\nAffine registration directories: ".scalar(@affineRegistrations)."\n";
 	print "Locked affine registration directories: ".scalar(@lockedAffineRegistrations)."\n";
 
@@ -760,18 +774,18 @@ sub status {
 			print "\t",$lockedAffineRegistrations[$i],"\t",$lockedAffineIDs[$i],"\n"
 		}
 	}
-	
-	#print "\t",join("\n\t",sort @lockedAffineRegistrations),"\n" if $opt{v} && @lockedAffineRegistrations;	
+
+	#print "\t",join("\n\t",sort @lockedAffineRegistrations),"\n" if $opt{v} && @lockedAffineRegistrations;
 
 	print "Unfinished affine registration directories: ".scalar(@unfinishedAffineRegistrations)."\n";
-	print "\t",join("\n\t",sort @unfinishedAffineRegistrations),"\n" if $opt{v} && @unfinishedAffineRegistrations;	
+	print "\t",join("\n\t",sort @unfinishedAffineRegistrations),"\n" if $opt{v} && @unfinishedAffineRegistrations;
 
 	print "\nWarp registration directories: ".scalar(@warpRegistrations)."\n";
 	print "Unfinished warp registration directories: ".scalar(@unfinishedWarpRegistrations)."\n";
-	print "\t",join("\n\t",sort @unfinishedWarpRegistrations),"\n" if $opt{v} && @unfinishedWarpRegistrations;	
+	print "\t",join("\n\t",sort @unfinishedWarpRegistrations),"\n" if $opt{v} && @unfinishedWarpRegistrations;
 
 	print "Locked warp registration directories: ".scalar(@lockedWarpRegistrations)."\n";
-#	print "\t",join("\n\t",sort @lockedWarpRegistrations),"\n" if $opt{v} && @lockedWarpRegistrations;	
+#	print "\t",join("\n\t",sort @lockedWarpRegistrations),"\n" if $opt{v} && @lockedWarpRegistrations;
 	if($opt{v}){
 		foreach (@lockedWarpRegistrations) {
 			print "\t",$_,"\t",getidfromlockfile($_),"\n"
@@ -779,19 +793,12 @@ sub status {
 	}
 
 	print "Reformatted image directories: ".scalar(@reformattedImages)."\n";
+	return;
 }
 
 sub findAllFiles {
-	# check if file ends in .pic or .pic.gz case insensitive
 	$found{$File::Find::name}=$_;
 }
-
-# sub selectImageFiles {
-# 	# check if file ends in .pic or .pic.gz case insensitive
-# 	if ($File::Find::name =~ /.*\.pic(\.gz){0,1}$/i){
-# 		$images{$File::Find::name}=1;
-# 	}
-# }
 
 sub myexec {
 	my (@cmd) = @_;
@@ -813,18 +820,19 @@ sub myexec {
 		  }
 						  
 		print STDERR "MYEXEC-DEBUG: RVAL = $rval: CMD = $cmd_string\n" if($opt{g});
-		return $rval;		
+		return $rval;
 	}
+	return;
 }
 
 sub dumpcommand {
-  my $note = shift @_;
-  my $command = shift @_;
-  my $filename = shift @_;
-  open (FH, '>' . $filename);
-  print FH "$note\n";
-  print FH "$command\n";
-  close (FH);
+  my ($note, $command, $filename) = @_;
+  my $FH;
+  die "Unable to write command file $filename" unless open ($FH, '>' . $filename);
+  print $FH "$note\n";
+  print $FH "$command\n";
+  close ($FH);
+  return;
 }
 
 sub makelock {
@@ -840,9 +848,10 @@ sub makelock {
 	return 0 if (-f "$lockfile");
 
 	# write our lock message
-	open(FH,">> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
-	print FH "$lockmessage\n";
-	close FH;
+	my $FH;
+	open($FH,">> $lockfile") or die ("Can't make lockfile at $lockfile: $!\n");
+	print $FH "$lockmessage\n";
+	close $FH;
 	# now read back in ...
 	my $firstLine=getidfromlockfile($lockfile);
 	# and check we wrote the first line (assuming msg is unique to this process)
@@ -857,15 +866,17 @@ sub removelock {
 	print STDERR "Unable to remove lock $lockfile\n" unless (unlink $lockfile);
 	$SIG{'INT'}='DEFAULT';
 	$SIG{'USR2'}='DEFAULT';
+	return;
 }
 
 sub getidfromlockfile {
-	my ($file)=@_;	
-	open (FH,"$file") or return "NULL";
-	my $line=<FH>;
+	my ($file)=@_;
+	my $FH;
+	open ($FH,"$file") or return "NULL";
+	my $line=<$FH>;
 	chomp $line;
-	close(FH);
-	return($line);	
+	close($FH);
+	return($line);
 }
 
 sub truncatefile {
@@ -878,11 +889,11 @@ sub truncatefile {
 	return 0 unless $deleteInputImage =~ /(truncate|delete)/;
 	my $action = $1;
 	return 0 if ($action eq "truncate") && ($size==0); # already truncated?
-	
+
 	print STDERR "About to $action file $filename\n" if $opt{v};
-	
+
 	return -1 if $opt{t}; # bail if testing
-	
+
 	return unlink($filename) if($action eq "delete");
 
 	truncate $filename,0;
@@ -894,6 +905,7 @@ sub interrupt {
 	my($signal)=@_;
 	print STDERR "Caught Interrupt\: $signal \n";
 	$quitNextImage=1 if($signal eq 'QUIT');
+	return;
 }
 
 sub usage {
@@ -940,7 +952,7 @@ Version: $version
 	-d [stem] registration subdirectory (default ./Registration)
 	   [nb if this begins in a dot then the value will be appended to both
 	   reformatted and Registration directories]
-	
+
 	-e File ending of input images (pic, nrrd, nhdr)
 	-o File ending of output images (bin, nrrd, nhdr) - defaults to torsten raw bin
 
@@ -949,13 +961,14 @@ Version: $version
 	-I inverse consistent warp weight (--ic-weight) default 0, try 1e-5
 	-E [energy] energy of warp transform (default e-1)
 	-X [exploration] (default 16)
-	-M [metric] (default 0 (NMI), options 1=MI)
+	-M [metric] (Supported values: nmi, mi, cr, msd, ncc, default is nmi)
+       See warp --help for details
 	-C [coarsest] (default 4)
 	-G [grid-spacing] (default 40)
 	-R [refine] (default 3)
 	-J [0 to 1] jacobian-weight volume constraining param (default 0)
 	-T [threads] (default auto)
-	
+
 	-A [option] additional options for affine transformation
 	-W [option] additional options for warp transformation
   
@@ -973,4 +986,5 @@ sub init {
 	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PLm:x:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h} or $#ARGV==-1;
+	return;
 }

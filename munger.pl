@@ -454,7 +454,7 @@ sub runReformat {
 	# Construct the outlist - basename gets the name of the file from full path
 	my $outlist=basename($baseinlist);  #eg averagegoodbrain_brainame_warp40-5_e1e-1_c4.list
 	# Remove everything up to warp or 9dof
-	$outlist=~s/^.*_((warp|9dof|pa)^.*?)\.list$/$1/i;
+	$outlist=~s/^.*_((warp|9dof|pa).*)\.list$/$1/i;
 	# nb registration channel may be different from channel of current image
 	# which is what we want here
 	if( $level=~m/[0-9]/ ){

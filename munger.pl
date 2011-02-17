@@ -32,10 +32,11 @@
 #       jobs to be somewhat time-limited
 # v1.16 2009-08-08 - Add option to delete/truncate input images after reformat
 # v1.17 2009-10-27 - Add ability to specify multiple input images / dirs 
+# v1.18 2010-10-12 - fix duplicated stems in reformatted images
 
 require 5.004;
 use strict;
-my $version= 1.17;
+my $version= 1.18;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;

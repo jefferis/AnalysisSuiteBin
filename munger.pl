@@ -550,6 +550,14 @@ sub runAffine {
 	my $outlist=$listroot."_9dof.list";
 	my $inputfile = $filepath;
 	$inputfile = File::Spec->catdir($listroot."_pa.list","registration") if $opt{P} || $opt{L};
+	if($opt{H}){
+		# will use output of Generalised Hough Transform (calculated by Amira) to initialise
+		# affine transformation. Will use this where available, otherwise just fall back to 
+		# regular affine
+		my $ghtfile=File::Spec->catdir($listroot."_ght.list","registration");
+		# use GHT file as input if it exists
+		$inputfile=$ghtfile if(-e File::Spec->catfile($ghtfile));
+	}
 
 	# Continue if an output file doesn't exist or
 	# -s means file exists and has non zero size
@@ -957,6 +965,8 @@ Version: $version
 	-e File ending of input images (pic, nrrd, nhdr)
 	-o File ending of output images (bin, nrrd, nhdr) - defaults to torsten raw bin
 
+	-H use Amira's Generalised Hough Transform to initialise affine registration when available
+	   (nb the registration folder should be called Registration/affine/XXX_ght.list)
 	-P find initial affine transform using image principal axes
 	-L find initial affine transform using landmarks
 	-I inverse consistent warp weight (--ic-weight) default 0, try 1e-5
@@ -984,7 +994,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:PLm:x:';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:HPLm:x:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h} or $#ARGV==-1;
 	return;

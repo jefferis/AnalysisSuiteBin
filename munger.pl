@@ -536,7 +536,7 @@ sub runReformat {
 }
 
 sub runAffine {
-	my ($filepath,$brain,$channel) = @_;
+	my ($imagepath,$brain,$channel) = @_;
 
 	my $args="-i -v --dofs 6 --dofs 9";
 	if ($threads ne "auto"){
@@ -546,33 +546,41 @@ sub runAffine {
 	$args.=" ".$opt{A};
 	# new version has relative filenames in output dir depending on input hierarchy
 
-	my $listroot=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($filepath),$referenceStem."_".$brain.$channel);
+	my $listroot=File::Spec->catdir($regRoot,"affine",&findRelPathToImgDir($imagepath),$referenceStem."_".$brain.$channel);
 	my $outlist=$listroot."_9dof.list";
-	my $inputfile = $filepath;
-	$inputfile = File::Spec->catdir($listroot."_pa.list","registration") if $opt{P} || $opt{L};
+	my $inputfile = $imagepath;
+	my $initialreg = "";
+	$initialreg = File::Spec->catdir($listroot."_pa.list","registration") if $opt{P} || $opt{L};
 	if($opt{H}){
 		# will use output of Generalised Hough Transform (calculated by Amira) to initialise
 		# affine transformation. Will use this where available, otherwise just fall back to 
 		# regular affine
-		my $ghtfile=File::Spec->catdir($listroot."_ght.list","registration");
+		my $ghtfilepath=File::Spec->catdir($listroot."_ght.list","registration");
 		# use GHT file as input if it exists
-		$inputfile=$ghtfile if(-e File::Spec->catfile($ghtfile));
+		$initialreg=$ghtfilepath if(-e $ghtfilepath);
 	}
 
 	# Continue if an output file doesn't exist or
 	# -s means file exists and has non zero size
 	if( ! -s File::Spec->catfile($outlist,"registration") ){
 		# no output file, so just continue
-	} elsif ( -M "$inputfile" > -M File::Spec->catfile($outlist,"registration") ) {
-		# ok age of indir > age of outdir so no need to rerun
+	} elsif ($initialreg) { # we have an initial registration
+		print STDERR "Inital registration $initialreg missing\n" if(! -e $initialreg);
+		# input registration AND input image are both older than output so can return
+		return 0 if ( -M "$imagepath" > -M File::Spec->catfile($outlist,"registration") && 
+			-M "$initialreg" > -M File::Spec->catfile($outlist,"registration") );
+	} elsif ( -M "$imagepath" > -M File::Spec->catfile($outlist,"registration") ) {
+		# ok age of input image > age of outdir so no need to rerun
 		return 0;
-	}
+	}	
 
 	# bail out if somebody else is working on this
 	return 0 unless makelock("$outlist/registration.lock");
 
-	my @cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $referenceImage, $inputfile );
-	@cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $listroot."_pa.list" ) if $opt{P} || $opt{L};
+	my @cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, $referenceImage, $imagepath );
+	# pass initial transformation if required
+	@cmd=( $affCommand, split(/\s+/,$args), "-o", $outlist, 
+		"--initial", $initialreg, $referenceImage, $imagepath ) if ($initialreg);
 
 	my $cmd_string = join( ' ', @cmd );
 	if( $opt{v}){

@@ -186,7 +186,27 @@ foreach my $inputFileSpec (@ARGV){
 	# so that we can do munger.pl . instead of munger.pl `pwd`
 	$inputFileSpec=$rootDir if $inputFileSpec eq ".";
 
-	if(-f $inputFileSpec || $inputFileSpec=~m/\.study/ ) {
+	
+	if($opt{F}) {
+		# we've specified that files are actually lists of images, one per line
+		if(-f $inputFileSpec){
+			open(MYINPUTFILE, "<$inputFileSpec");
+		} else {
+			die "Unable to to open file $inputFileSpec";
+		}
+		
+		while(<MYINPUTFILE>){
+			my($nextfile) = $_;
+			chomp($nextfile);
+			if(-f $nextfile) {
+				&munge($nextfile)
+			} else {
+				warn "Unable to read $nextfile";
+			}
+		}
+		close(MYINPUTFILE);
+	
+	} elsif(-f $inputFileSpec || $inputFileSpec=~m/\.study/ ) {
 		# find the root dir even if we specifed images dir or subdir
 		# $rootDir=findRootDir($inputFileSpec);
 
@@ -970,7 +990,11 @@ Version: $version
 	-d [stem] registration subdirectory (default ./Registration)
 	   [nb if this begins in a dot then the value will be appended to both
 	   reformatted and Registration directories]
-
+	-F Read path to input files, one per line, from <PICFILE1> ...
+	   NB path should be absolute or relative to registration directory e.g.
+	     images/imagea-01.nrrd
+	     images/imageb-01.nrrd
+	
 	-e File ending of input images (pic, nrrd, nhdr)
 	-o File ending of output images (bin, nrrd, nhdr) - defaults to nrrd
 
@@ -1003,7 +1027,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:HPLm:x:';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:FE:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:HPLm:x:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h} or $#ARGV==-1;
 	return;

@@ -511,9 +511,9 @@ sub runReformat {
 
 	# make command 
 	my @args=("-v","--pad-out","0");	# makes null pixels black instead of white
-	# any extra arguments passed in from user
-	my $moreargs.=" ".$opt{1};
-	my @cmd=( $reformatCommand, @args, $moreargs, "-o", $outputSpec.${outfile},
+	# change the reference image (specifically for reformatting) if requested
+	$referenceImage=$opt{1} if ($opt{1});
+	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile},
 	    "--floating", $inputimgfilepath, $referenceImage, $inlist );
 	my $cmd_string=join(' ',@cmd);
 
@@ -993,7 +993,7 @@ Version: $version
 
 	-A [option] additional options for affine transformation
 	-W [option] additional options for warp transformation
-	-1 [option] additional options for reformatx command
+	-1 use this brain for reformatx target
   
 Munge a BioRad PIC file or (recursively) parse a directory of PIC files
 by running the affine and warp registrations and reformatting images

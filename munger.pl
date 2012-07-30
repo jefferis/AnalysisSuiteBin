@@ -33,10 +33,11 @@
 # v1.16 2009-08-08 - Add option to delete/truncate input images after reformat
 # v1.17 2009-10-27 - Add ability to specify multiple input images / dirs 
 # v1.18 2010-10-12 - fix duplicated stems in reformatted images
+# v1.19 2012-05-31 - Option to handle input from Amira Global Hough Transform
 
 require 5.004;
 use strict;
-my $version= 1.18;
+my $version= 1.19;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
@@ -973,7 +974,7 @@ Version: $version
 	   reformatted and Registration directories]
 
 	-e File ending of input images (pic, nrrd, nhdr)
-	-o File ending of output images (bin, nrrd, nhdr) - defaults to torsten raw bin
+	-o File ending of output images (bin, nrrd, nhdr) - defaults to nrrd
 
 	-H use Amira's Generalised Hough Transform to initialise affine registration when available
 	   (nb the registration folder should be called Registration/affine/XXX_ght.list)

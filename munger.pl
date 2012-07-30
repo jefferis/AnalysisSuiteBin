@@ -951,6 +951,9 @@ sub usage {
 Usage: $0 [OPTIONS] <PICFILE/DIR> [<PICFILE2/DIR2> ...]
 Version: $version
 
+	A wrapper script for CMTK registration software. For more on CMTK see:
+	  http://www.nitrc.org/projects/cmtk/
+
 	-h print this help
 	-v verbose (provide extra feed back at runtime)
 	-t test run (no commands are actually run)
@@ -1016,8 +1019,8 @@ Version: $version
 	-A [option] additional options for affine transformation
 	-W [option] additional options for warp transformation
   
-Munge a BioRad PIC file or (recursively) parse a directory of PIC files
-by running the affine and warp registrations and reformatting images
+Munge a BioRad PIC or nrrd file or (recursively) parse a directory of PIC/nrrd
+files by running CMTK affine and warp registrations and reformatting images
 as required.  Final argument must be the images directory or a single image.
 EOF
   

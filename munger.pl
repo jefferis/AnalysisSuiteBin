@@ -510,7 +510,9 @@ sub runReformat {
 
 	# make command 
 	my @args=("-v","--pad-out","0");	# makes null pixels black instead of white
-	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile},
+	# any extra arguments passed in from user
+	my $moreargs.=" ".$opt{1};
+	my @cmd=( $reformatCommand, @args, $moreargs, "-o", $outputSpec.${outfile},
 	    "--floating", $inputimgfilepath, $referenceImage, $inlist );
 	my $cmd_string=join(' ',@cmd);
 
@@ -990,6 +992,7 @@ Version: $version
 
 	-A [option] additional options for affine transformation
 	-W [option] additional options for warp transformation
+	-1 [option] additional options for reformatx command
   
 Munge a BioRad PIC file or (recursively) parse a directory of PIC files
 by running the affine and warp registrations and reformatting images
@@ -1002,7 +1005,7 @@ EOF
 sub init {
 # copied from: http://www.cs.mcgill.ca/~abatko/computers/programming/perl/howto/getopts
 	use Getopt::Std;      # to handle command line options
-	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:HPLm:x:';
+	my $opt_string = 'hvtawuic:r:l:s:b:f:E:X:M:C:G:R:T:J:I:zp:d:k:g0A:W:e:o:HPLm:x:1:';
 	getopts( "$opt_string", \%opt ) or usage();
 	usage() if $opt{h} or $#ARGV==-1;
 	return;

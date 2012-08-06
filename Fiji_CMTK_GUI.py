@@ -75,7 +75,7 @@ class ImageDirListener(TextListener):
 	def textValueChanged(self, tvc):
 		regroot = regrootf.getText()
 		if len(regroot)>0 & os.path.exists(regroot):
-			print "regroot:"+regroot+ " exists!" 
+			#print "regroot:"+regroot+ " exists!" 
 			return
 		imgdir = imgdirf.getText()
 		if os.path.exists(imgdir):
@@ -122,7 +122,7 @@ imgdirf = gd.getStringFields().get(2)
 gd.addCheckboxGroup(3,2,["affine","01","warp","02","reformat","03"],[True,True,True,True,True,True],["Registration Actions","Reformat Channels"])
 #gd.addCheckboxGroup(1,3,["01","02","03"],[True,True,True],["Reformat Channels"])
 
-gd.addStringField("Output suffix","")
+gd.addStringField("Output folder suffix","")
 outsuffixf = gd.getStringFields().get(3)
 gd.addMessage("Output folders:")
 outputf=gd.getMessage()
@@ -139,8 +139,12 @@ gd.addChoice("Action:",["Test","Run","Write Script"],"Test")
 regrootf.addTextListener(RegRootListener())
 imgdirf.addTextListener(ImageDirListener())
 outsuffixf.addTextListener(OuputSuffixListener())
+# used for errors etc
+gd.addMessage("Start by choosing a registration directory or images directory!")
+statusf=gd.getMessage()
 gd.showDialog()
-
+if gd.wasCanceled():
+	sys.exit("User cancelled!")
 # Process Dialog Choices
 rootDir=gd.getNextString()
 os.chdir(rootDir)
@@ -149,6 +153,29 @@ image=gd.getNextString()
 print refBrain
 refBrain=relpath(refBrain,rootDir)
 print refBrain
+
+affine=gd.getNextBoolean()
+ch01=gd.getNextBoolean()
+warp=gd.getNextBoolean()
+ch02=gd.getNextBoolean()
+reformat=gd.getNextBoolean()
+ch03=gd.getNextBoolean()
+munger_actions=""
+if affine:
+	munger_actions+="-a "
+if warp:
+	munger_actions+="-w "
+if reformat:
+	channels=''
+	if ch01:
+		channels+='01'
+	if ch02:
+		channels+='02'
+	if ch03:
+		channels+='03'
+	if channels != '':
+		munger_actions+="-r "+channels+" "
+
 outsuffix=gd.getNextString()
 regparams=gd.getNextChoice()
 print regparams
@@ -158,7 +185,7 @@ action=gd.getNextChoice()
 
 if action == 'Test': mungeropts+=' -t'
 
-cmd='"%s" -b "%s" %s %s -s "%s" %s' % (munger,bindir,regparams,mungeropts,refBrain,image)
+cmd='"%s" -b "%s" %s %s %s -s "%s" %s' % (munger,bindir,munger_actions,regparams,mungeropts,refBrain,image)
 print cmd
 # always make a script
 script=makescript(cmd,rootDir,outdir=os.path.join(rootDir,'commands'))

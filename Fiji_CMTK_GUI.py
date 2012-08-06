@@ -1,5 +1,6 @@
 import fiji.util.gui.GenericDialogPlus
 from java.awt.event import TextListener
+from java.awt.event import ItemListener
 
 import os, sys, time
 import subprocess
@@ -35,6 +36,7 @@ def makescript(cmd,rootdir,outdir):
     filepath=os.path.join(outdir,filename)
     f = open(filepath, 'w')
     f.write('#!/bin/sh\n# %s\ncd \"%s"\n%s' % (mtime, rootdir, cmd))
+    f.close()
     os.chmod(filepath,0755)
     return filepath
 
@@ -65,16 +67,19 @@ class RegRootListener(TextListener):
 		if os.path.exists(regroot):
 			updateOuputFolders()
 		imgdir = os.path.join(regroot,'images')
-		if os.path.exists(imgdir):
+		if lenos.path.exists(imgdir):
 			imgdirf.setText(imgdir)
 			imgdirf.setForeground(Color.black)
+			statusf.setText('')
 			return
 		imgdirf.setForeground(Color.red)
+		statusf.setText('Please choose input image/directory')
+		statusf.setForeground(Color.red)
 
 class ImageDirListener(TextListener):
 	def textValueChanged(self, tvc):
 		regroot = regrootf.getText()
-		if len(regroot)>0 & os.path.exists(regroot):
+		if len(regroot)>0 and os.path.exists(regroot):
 			#print "regroot:"+regroot+ " exists!" 
 			return
 		imgdir = imgdirf.getText()
@@ -86,6 +91,14 @@ class OuputSuffixListener(TextListener):
 	def textValueChanged(self, tvc):
 		updateOuputFolders()
 
+class RegParamListener(ItemListener):
+	def itemStateChanged(self, isc):
+		regparamc=choicef.getSelectedItem()
+		regparams=''
+		if regparamc == 'Cachero, Ostrovsky 2010':
+			regparams = "-X 26 -C 8 -G 80 -R 4 -A '--accuracy 0.4' -W '--accuracy 0.4'"
+		regparamf.setText(regparams)
+		print "Chosen reg params: "+regparamc
 
 def updateOuputFolders():
 	outsuffix=outsuffixf.getText()
@@ -106,7 +119,8 @@ gd = fiji.util.gui.GenericDialogPlus('CMTK Registration GUI')
 bindir=os.path.dirname(findExecutable('warp'))
 print 'bindir is ' + bindir
 # 0.1) Identify path to munger.pl script
-munger=findExecutable('munger.pl')
+munger='/Users/jefferis/bin/munger.pl'
+#munger=findExecutable('munger.pl')
 
 # path to munger.pl script
 gd.addHelp("http://flybrain.mrc-lmb.cam.ac.uk/dokuwiki/doku.php?id=warping_manual:registration_gui")
@@ -129,16 +143,21 @@ outputf=gd.getMessage()
 
 # Registration options 
 # Jefferis,Potter 2007, Cachero,Ostrovsky 2010, Manual
-gd.addChoice("Registration Params:",["Jefferis, Potter 2007","Cachero, Ostrovsky 2010","Full Manual"],"Cachero, Ostrovsky 2010")
+gd.addChoice("Registration Params:",["Jefferis, Potter 2007","Cachero, Ostrovsky 2010"],"Jefferis, Potter 2007")
+choicef=gd.getChoices().get(0)
+print choicef.getSelectedItem()
+
 gd.addStringField("(Further) Registration Params: ","");
-gd.addStringField("(Further) Arguments to Munger: ","");
+regparamf = gd.getStringFields().get(4)
+gd.addStringField("Additional Arguments to Munger: ","");
 
 # final Action (Test, Run, Write Script)
-gd.addChoice("Action:",["Test","Run","Write Script"],"Test")
+gd.addChoice("Action:",["Test","Write Script","Run"],"Write Script")
 
 regrootf.addTextListener(RegRootListener())
 imgdirf.addTextListener(ImageDirListener())
 outsuffixf.addTextListener(OuputSuffixListener())
+choicef.addItemListener(RegParamListener())
 # used for errors etc
 gd.addMessage("Start by choosing a registration directory or images directory!")
 statusf=gd.getMessage()
@@ -150,6 +169,7 @@ rootDir=gd.getNextString()
 os.chdir(rootDir)
 refBrain=gd.getNextString()
 image=gd.getNextString()
+image=relpath(image,rootDir)
 print refBrain
 refBrain=relpath(refBrain,rootDir)
 print refBrain
@@ -189,6 +209,7 @@ cmd='"%s" -b "%s" %s %s %s -s "%s" %s' % (munger,bindir,munger_actions,regparams
 print cmd
 # always make a script
 script=makescript(cmd,rootDir,outdir=os.path.join(rootDir,'commands'))
+print 'script is %s' % (script)
 
 if action != 'Write Script':
 	# Actually run the script    

@@ -125,7 +125,7 @@ bindir=os.path.dirname(findExecutable('warp'))
 print 'bindir is ' + bindir
 # 0.1) Identify path to munger.pl script
 munger='/Users/jefferis/bin/munger.pl'
-#munger=findExecutable('munger.pl')
+munger=findExecutable('munger.pl')
 gd.addHelp("http://flybrain.mrc-lmb.cam.ac.uk/dokuwiki/doku.php?id=warping_manual:registration_gui")
 
 dirFieldWidth=50

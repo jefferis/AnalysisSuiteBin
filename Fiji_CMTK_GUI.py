@@ -161,7 +161,16 @@ font=Font("SansSerif",Font.BOLD,12)
 gd.setInsets(25,100,10)
 gd.addMessage("Advanced Options:",font)
 advancedoptionsf=gd.getMessage()
-gd.setInsets(0,220,10)
+
+ncores=Runtime.getRuntime().availableProcessors()
+defaultCores=1
+if ncores >=8:
+    defaultCores=4
+elif ncores>=4:
+    defaultCores=2
+gd.addSlider("Number of cpu cores to use",1,ncores,defaultCores)
+
+gd.setInsets(0,230,10)
 gd.addCheckbox("Verbose log messages",False)
 
 gd.addStringField("Output folder suffix","",20)
@@ -214,6 +223,7 @@ if reformat:
 		munger_actions+="-r "+channels+" "
 
 verbose=gd.getNextBoolean()
+corestouse=gd.getNextNumber()
 outsuffix=gd.getNextString()
 regparams=gd.getNextChoice()
 print regparams
@@ -223,6 +233,7 @@ action=gd.getNextChoice()
 
 if action == 'Test': mungeropts+=' -t'
 if verbose: mungeropts+=' -v'
+mungeropts+=' -T %d' % (int(corestouse))
 
 cmd='"%s" -b "%s" %s %s %s -s "%s" %s' % (munger,bindir,munger_actions,regparams,mungeropts,refBrain,image)
 print cmd

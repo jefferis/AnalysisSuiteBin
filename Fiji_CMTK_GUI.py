@@ -129,15 +129,16 @@ munger='/Users/jefferis/bin/munger.pl'
 gd.addHelp("http://flybrain.mrc-lmb.cam.ac.uk/dokuwiki/doku.php?id=warping_manual:registration_gui")
 
 dirFieldWidth=50
-gd.addDirectoryField("Registration Folder:",None,dirFieldWidth)
+gdMargin=130
+gd.addDirectoryField("Registration Folder",None,dirFieldWidth)
 regrootf = gd.getStringFields().get(0)
 # reference brain
 gd.addFileField("Reference Brain", "",dirFieldWidth)
 # input directory/image
-gd.addDirectoryOrFileField("Input Image or Image Directory:",None,dirFieldWidth)
+gd.addDirectoryOrFileField("Input Image or Image Directory",None,dirFieldWidth)
 imgdirf = gd.getStringFields().get(2)
 
-gd.setInsets(10,120,10)
+gd.setInsets(10,gdMargin,10)
 gd.addMessage("Output folders:")
 outputf=gd.getMessage()
 
@@ -148,23 +149,27 @@ gd.addCheckboxGroup(3,2,["affine","01","warp","02","reformat","03"],[True,True,T
 
 # Registration options 
 # Jefferis,Potter 2007, Cachero,Ostrovsky 2010, Manual
-gd.addChoice("Registration Params:",["Jefferis, Potter 2007","Cachero, Ostrovsky 2010"],"Jefferis, Potter 2007")
+gd.addChoice("Registration Params",["Jefferis, Potter 2007","Cachero, Ostrovsky 2010"],"Jefferis, Potter 2007")
 choicef=gd.getChoices().get(0)
 print choicef.getSelectedItem()
 
 # final Action (Test, Run, Write Script)
-gd.addChoice("Action:",["Test","Write Script","Run"],"Write Script")
+gd.addChoice("Action",["Test","Write Script","Run"],"Write Script")
 font=Font("SansSerif",Font.BOLD,12)
+
+# Advanced options
+gd.setInsets(25,100,10)
 gd.addMessage("Advanced Options:",font)
 advancedoptionsf=gd.getMessage()
+gd.setInsets(0,220,10)
+gd.addCheckbox("Verbose log messages",False)
 
 gd.addStringField("Output folder suffix","",20)
 outsuffixf = gd.getStringFields().get(3)
 
-gd.addStringField("(Further) Registration Params: ","",50);
+gd.addStringField("(Further) Registration Params","",50);
 regparamf = gd.getStringFields().get(4)
-gd.addStringField("Additional Arguments to Munger: ","",50);
-
+gd.addStringField("Additional Arguments to munger.pl","",50);
 
 regrootf.addTextListener(RegRootListener())
 imgdirf.addTextListener(ImageDirListener())
@@ -208,6 +213,7 @@ if reformat:
 	if channels != '':
 		munger_actions+="-r "+channels+" "
 
+verbose=gd.getNextBoolean()
 outsuffix=gd.getNextString()
 regparams=gd.getNextChoice()
 print regparams
@@ -216,6 +222,7 @@ mungeropts=gd.getNextString()
 action=gd.getNextChoice()
 
 if action == 'Test': mungeropts+=' -t'
+if verbose: mungeropts+=' -v'
 
 cmd='"%s" -b "%s" %s %s %s -s "%s" %s' % (munger,bindir,munger_actions,regparams,mungeropts,refBrain,image)
 print cmd

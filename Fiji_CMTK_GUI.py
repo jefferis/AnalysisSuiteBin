@@ -25,14 +25,18 @@ def relpath(path, basedir = os.curdir):
 
 def makescript(cmd,rootdir,outdir):
     '''
-    Make a shell script file that can be used to rerun the warp action
+    Make a shell script file that can be used to rerun the warp action, using
+    chmod to ensure that it is executable.
     
-    Because the file is executable and ends in .command it can be 
-    double clicked on MacOS X
+    On MacOS X the file suffix is command so that it can be double clicked in the Finder.
     '''
     if not os.path.exists(outdir): os.mkdir(outdir)
     mtime = time.strftime('%Y-%m-%d_%H.%M.%S')
-    filename= "munger_%s.command" %(mtime)
+    suffix='sh'
+    osname=System.getProperty("os.name")
+    if "OS X" in osname:
+        suffix='command'
+    filename= "munger_%s.%s" %(mtime,suffix)
     filepath=os.path.join(outdir,filename)
     f = open(filepath, 'w')
     f.write('#!/bin/sh\n# %s\ncd \"%s"\n%s' % (mtime, rootdir, cmd))

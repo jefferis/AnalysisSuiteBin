@@ -237,10 +237,12 @@ mungeropts+=' -T %d' % (int(corestouse))
 
 cmd='"%s" -b "%s" %s %s %s -s "%s" %s' % (munger,bindir,munger_actions,regparams,mungeropts,refBrain,image)
 print cmd
-# always make a script
-script=makescript(cmd,rootDir,outdir=os.path.join(rootDir,'commands'))
-print 'script is %s' % (script)
 
-if action != 'Write Script':
-	# Actually run the script    
-	subprocess.call(script,shell=True)
+if action !='Test':
+	# make a script
+	script=makescript(cmd,rootDir,outdir=os.path.join(rootDir,'commands'))
+	print 'script is %s' % (script)
+	
+	if action != 'Write Script':
+		# Actually run the script
+		subprocess.call(script,shell=True)

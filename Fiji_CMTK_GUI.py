@@ -1,6 +1,7 @@
 import fiji.util.gui.GenericDialogPlus
 from java.awt.event import TextListener
 from java.awt.event import ItemListener
+from java.awt import Font
 
 import os, sys, time
 import subprocess
@@ -136,14 +137,14 @@ gd.addFileField("Reference Brain", "",dirFieldWidth)
 gd.addDirectoryOrFileField("Input Image or Image Directory:",None,dirFieldWidth)
 imgdirf = gd.getStringFields().get(2)
 
-# what to do: affine/warp/reformat
-gd.addCheckboxGroup(3,2,["affine","01","warp","02","reformat","03"],[True,True,True,True,True,True],["Registration Actions","Reformat Channels"])
-#gd.addCheckboxGroup(1,3,["01","02","03"],[True,True,True],["Reformat Channels"])
-
-gd.addStringField("Output folder suffix","")
-outsuffixf = gd.getStringFields().get(3)
+gd.setInsets(10,120,10)
 gd.addMessage("Output folders:")
 outputf=gd.getMessage()
+
+# what to do: affine/warp/reformat
+gd.setInsets(10,200,10)
+gd.addCheckboxGroup(3,2,["affine","01","warp","02","reformat","03"],[True,True,True,True,True,True],["Registration Actions","Reformat Channels"])
+#gd.addCheckboxGroup(1,3,["01","02","03"],[True,True,True],["Reformat Channels"])
 
 # Registration options 
 # Jefferis,Potter 2007, Cachero,Ostrovsky 2010, Manual
@@ -151,12 +152,19 @@ gd.addChoice("Registration Params:",["Jefferis, Potter 2007","Cachero, Ostrovsky
 choicef=gd.getChoices().get(0)
 print choicef.getSelectedItem()
 
-gd.addStringField("(Further) Registration Params: ","",30);
-regparamf = gd.getStringFields().get(4)
-gd.addStringField("Additional Arguments to Munger: ","",30);
-
 # final Action (Test, Run, Write Script)
 gd.addChoice("Action:",["Test","Write Script","Run"],"Write Script")
+font=Font("SansSerif",Font.BOLD,12)
+gd.addMessage("Advanced Options:",font)
+advancedoptionsf=gd.getMessage()
+
+gd.addStringField("Output folder suffix","",20)
+outsuffixf = gd.getStringFields().get(3)
+
+gd.addStringField("(Further) Registration Params: ","",50);
+regparamf = gd.getStringFields().get(4)
+gd.addStringField("Additional Arguments to Munger: ","",50);
+
 
 regrootf.addTextListener(RegRootListener())
 imgdirf.addTextListener(ImageDirListener())

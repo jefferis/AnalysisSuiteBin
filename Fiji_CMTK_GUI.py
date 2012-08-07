@@ -245,4 +245,4 @@ if action !='Test':
 	
 	if action != 'Write Script':
 		# Actually run the script
-		subprocess.call(script,shell=True)
+		subprocess.call(script,shell=False)

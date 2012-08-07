@@ -125,15 +125,15 @@ print 'bindir is ' + bindir
 # 0.1) Identify path to munger.pl script
 munger='/Users/jefferis/bin/munger.pl'
 #munger=findExecutable('munger.pl')
-
-# path to munger.pl script
 gd.addHelp("http://flybrain.mrc-lmb.cam.ac.uk/dokuwiki/doku.php?id=warping_manual:registration_gui")
-gd.addDirectoryField("Registration Folder:",None)
+
+dirFieldWidth=50
+gd.addDirectoryField("Registration Folder:",None,dirFieldWidth)
 regrootf = gd.getStringFields().get(0)
 # reference brain
-gd.addFileField("Reference Brain", "")
+gd.addFileField("Reference Brain", "",dirFieldWidth)
 # input directory/image
-gd.addDirectoryOrFileField("Input Image or Image Directory:",None)
+gd.addDirectoryOrFileField("Input Image or Image Directory:",None,dirFieldWidth)
 imgdirf = gd.getStringFields().get(2)
 
 # what to do: affine/warp/reformat
@@ -151,9 +151,9 @@ gd.addChoice("Registration Params:",["Jefferis, Potter 2007","Cachero, Ostrovsky
 choicef=gd.getChoices().get(0)
 print choicef.getSelectedItem()
 
-gd.addStringField("(Further) Registration Params: ","");
+gd.addStringField("(Further) Registration Params: ","",30);
 regparamf = gd.getStringFields().get(4)
-gd.addStringField("Additional Arguments to Munger: ","");
+gd.addStringField("Additional Arguments to Munger: ","",30);
 
 # final Action (Test, Run, Write Script)
 gd.addChoice("Action:",["Test","Write Script","Run"],"Write Script")

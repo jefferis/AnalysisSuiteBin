@@ -34,10 +34,11 @@
 # v1.17 2009-10-27 - Add ability to specify multiple input images / dirs 
 # v1.18 2010-10-12 - fix duplicated stems in reformatted images
 # v1.19 2012-05-31 - Option to handle input from Amira Global Hough Transform
+# v1.20 2012-09-17 - Option to add extra params/change of target to reformatx
 
 require 5.004;
 use strict;
-my $version= 1.19;
+my $version= 1.20;
 use vars qw/ %opt /;  # for command line options - see init()
 use File::Find;
 use File::Basename;
@@ -531,6 +532,8 @@ sub runReformat {
 
 	# make command 
 	my @args=("-v","--pad-out","0");	# makes null pixels black instead of white
+	# add any extra arguments
+	$args.=" ".$opt{2};
 	# change the reference image (specifically for reformatting) if requested
 	$referenceImage=$opt{1} if ($opt{1});
 	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile},
@@ -1021,6 +1024,7 @@ Version: $version
 	-A [option] additional options for affine transformation
 	-W [option] additional options for warp transformation
 	-1 use this brain for reformatx target
+	-2 [option] additional options for reformatx
   
 Munge a BioRad PIC or nrrd file or (recursively) parse a directory of PIC/nrrd
 files by running CMTK affine and warp registrations and reformatting images

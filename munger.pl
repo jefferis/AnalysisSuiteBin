@@ -533,7 +533,10 @@ sub runReformat {
 	# make command 
 	my @args=("-v","--pad-out","0");	# makes null pixels black instead of white
 	# add any extra arguments
-	$args.=" ".$opt{2};
+	if(exists $opt{2}){
+		push @args,$opt{2};
+	}
+
 	# change the reference image (specifically for reformatting) if requested
 	$referenceImage=$opt{1} if ($opt{1});
 	my @cmd=( $reformatCommand, @args, "-o", $outputSpec.${outfile},
